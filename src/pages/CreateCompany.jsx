@@ -78,22 +78,16 @@ export default function CreateCompany() {
     formData.append("logo", file);
 
     try {
-      const res = await fetch("/api/companies/upload-logo", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        },
-        body: formData
-      });
+      // The api client should automatically include the auth token via interceptors
+      const response = await api.post("/api/companies/upload-logo", formData);
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Upload failed");
-
-      setCompany(prev => ({ ...prev, logoUrl: data.logoUrl }));
+      setCompany(prev => ({ ...prev, logoUrl: response.data.logoUrl }));
       toast.success("Logo uploaded successfully");
     } catch (err) {
-      setError(err.message || "Logo upload failed");
-      toast.error(err.message || "Logo upload failed");
+      const errorMsg = err?.response?.data?.message || err?.message || "Logo upload failed";
+      setError(errorMsg);
+      toast.error(errorMsg);
+      console.error("Logo upload error details:", err);
     } finally {
       setUploading(false);
     }
@@ -156,7 +150,7 @@ export default function CreateCompany() {
     setLoading(true);
     const toastId = toast.loading("Creating company...");
     try {
-      const response = await api.post("/companies/create-with-plants-admin", {
+      const response = await api.post("/api/companies/create-with-plants-admin", {
         company,
         plants,
         admin,

@@ -13,12 +13,17 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:5001',
+        target: 'https://genbeta-backend.onrender.com',
         changeOrigin: true,
+        secure: false, // Allow self-signed certificates
+        headers: {
+          'origin': 'https://genbeta-backend.onrender.com'
+        }
       },
       '/uploads': {
-        target: 'http://localhost:5001',
+        target: 'https://genbeta-backend.onrender.com',
         changeOrigin: true,
+        secure: false
       }
     },
     hmr: {
@@ -35,7 +40,6 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'ui-lib': ['lucide-react', 'framer-motion'],
           'charts': ['recharts'],
-          'date-fns': ['date-fns'],
         },
         // Additional optimization
         compact: true,
