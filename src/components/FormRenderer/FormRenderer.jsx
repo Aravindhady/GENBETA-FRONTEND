@@ -46,7 +46,7 @@ export default function FormRenderer({
   const fields = externalFields || form?.fields || [];
   const sections = form?.sections || [];
   const isLoading = externalSubmitting !== undefined ? externalSubmitting : loading;
-
+  
   const update = (id, value) => {
     const fieldKey = id;
     const newData = { ...data, [fieldKey]: value };

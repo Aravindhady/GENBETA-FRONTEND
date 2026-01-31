@@ -1,26 +1,49 @@
+import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
   LayoutDashboard,
+  Building,
   Building2,
-  FileText,
+  BarChart3,
   ClipboardList,
   Users,
   Settings,
   LogOut,
   Factory,
-  CheckCircle2,
+  Clock,
   Layers,
-    Inbox,
-    UserPlus,
-    ChevronLeft,
-    ChevronRight
-  } from "lucide-react";
+  Inbox,
+  UserPlus,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  FileCheck,
+  FileEdit,
+  Archive,
+  Bookmark,
+  CreditCard,
 
+  } from "lucide-react";
 
 export default function Sidebar({ isOpen, onToggle }) {
   const { user, logout } = useAuth();
   const location = useLocation();
+
+  const [expandedFacility, setExpandedFacility] = useState(false);
+
+  // Check if any facility submenu is active
+  const isFacilitySubmenuActive = [
+    "/plant/forms/active",
+    "/plant/forms/draft", 
+    "/plant/forms/archived",
+    "/plant/forms/templates"
+  ].some(path => location.pathname.startsWith(path));
+
+  // Toggle facility submenu
+  const toggleFacilityMenu = () => {
+    setExpandedFacility(!expandedFacility);
+  };
 
   const getMenuItems = () => {
     const role = user?.role;
@@ -29,10 +52,23 @@ export default function Sidebar({ isOpen, onToggle }) {
       return {
         primary: [
           { title: "Dashboard", icon: LayoutDashboard, path: "/plant/dashboard" },
-          { title: "Templates", icon: Layers, path: "/plant/forms" },
-          { title: "Forms", icon: FileText, path: "/plant/forms-view" },
+          { 
+            title: "Facility", 
+            icon: Layers, 
+            path: "/plant/forms", 
+            submenu: [
+              { title: "Active Forms", path: "/plant/forms/active", icon: FileCheck },
+              { title: "Drafts", path: "/plant/forms/draft", icon: FileEdit },
+              { title: "Archived", path: "/plant/forms/archived", icon: Archive },
+              { title: "Saved Templates", path: "/plant/forms/templates", icon: Bookmark }
+            ],
+            expanded: expandedFacility,
+            toggle: toggleFacilityMenu,
+            isActive: isFacilitySubmenuActive || location.pathname === "/plant/forms"
+          },
+          { title: "Summary", icon: BarChart3, path: "/plant/forms-view" },
           { title: "Submissions", icon: Inbox, path: "/plant/submissions" },
-          { title: "Approvals", icon: CheckCircle2, path: "/plant/approval/pending" },
+          { title: "Approvals", icon: Clock, path: "/plant/approval/pending" },
         ],
         secondary: [
           { title: "Employees", icon: Users, path: "/plant/employees" },
@@ -50,7 +86,7 @@ export default function Sidebar({ isOpen, onToggle }) {
       return {
         primary: [
           { title: "Dashboard", icon: LayoutDashboard, path: "/super/dashboard" },
-          { title: "Companies", icon: Building2, path: "/super/companies" },
+          { title: "Companies", icon: Building, path: "/super/companies" },
         ],
         secondary: commonItems
       };
@@ -60,10 +96,12 @@ export default function Sidebar({ isOpen, onToggle }) {
       return {
         primary: [
           { title: "Dashboard", icon: LayoutDashboard, path: "/company/dashboard" },
-          { title: "Company Profile", icon: Building2, path: "/company/profile" },
+          { title: "Company Profile", icon: Building, path: "/company/profile" },
           { title: "Plants", icon: Factory, path: "/company/plants" },
         ],
-        secondary: commonItems
+        secondary: [
+          { title: "Plans & Usage", icon: CreditCard, path: "/company/plans" },
+        ]
       };
     }
 
@@ -71,10 +109,10 @@ export default function Sidebar({ isOpen, onToggle }) {
       return {
         primary: [
           { title: "Dashboard", icon: LayoutDashboard, path: "/employee/dashboard" },
-          { title: "Forms", icon: FileText, path: "/employee/forms-view" },
-          { title: "Facility", icon: FileText, path: "/employee/templates" },
+          { title: "Summary", icon: BarChart3, path: "/employee/forms-view" },
+          { title: "Facility", icon: Building2, path: "/employee/templates" },
           { title: "Assigned Forms", icon: ClipboardList, path: "/employee/assignments" },
-          { title: "Pending Approvals", icon: CheckCircle2, path: "/employee/approval/pending" },
+          { title: "Pending Approvals", icon: Clock, path: "/employee/approval/pending" },
         ],
         secondary: commonItems
       };
@@ -85,27 +123,79 @@ export default function Sidebar({ isOpen, onToggle }) {
 
   const sections = getMenuItems();
 
-  const renderNavLink = (item) => (
-    <NavLink
-      key={item.path}
-      to={item.path}
-      title={!isOpen ? item.title : ""}
-      className={({ isActive }) => `flex items-center ${isOpen ? "gap-2.5 px-3" : "justify-center px-0"} py-2.5 rounded-xl transition-all duration-200 group relative ${
-        isActive 
-          ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 shadow-sm shadow-indigo-100/50 font-semibold" 
-          : "text-slate-600 hover:bg-slate-50/80 hover:text-indigo-600"
-      }`}
-    >
-      <item.icon className={`w-4.5 h-4.5 transition-all flex-shrink-0 ${
-        location.pathname === item.path ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-600"
-      }`} />
-      <span className={`text-[13px] font-medium transition-all duration-200 whitespace-nowrap overflow-hidden ${
-        isOpen ? "opacity-100 w-auto" : "opacity-0 w-0"
-      }`}>
-        {item.title}
-      </span>
-    </NavLink>
-  );
+  const renderNavLink = (item) => {
+    if (item.submenu) {
+      return (
+        <div key={item.path}>
+          <div
+            onClick={item.toggle}
+            title={!isOpen ? item.title : ""}
+            className={`flex items-center ${isOpen ? "gap-2.5 px-3" : "justify-center px-0"} py-2.5 rounded-xl transition-all duration-200 group cursor-pointer relative ${
+              item.isActive 
+                ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 shadow-sm shadow-indigo-100/50 font-semibold" 
+                : "text-slate-600 hover:bg-slate-50/80 hover:text-indigo-600"
+            }`}
+          >
+            <item.icon className={`w-4.5 h-4.5 transition-all flex-shrink-0 ${
+              item.isActive ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-600"
+            }`} />
+            <span className={`text-[13px] font-medium transition-all duration-200 whitespace-nowrap overflow-hidden flex-1 ${
+              isOpen ? "opacity-100 w-auto" : "opacity-0 w-0"
+            }`}>
+              {item.title}
+            </span>
+            <ChevronDown 
+              className={`w-3.5 h-3.5 transition-transform duration-200 flex-shrink-0 ml-auto ${
+                item.expanded ? "rotate-180" : ""
+              } ${isOpen ? "opacity-100" : "opacity-0"}`}
+            />
+          </div>
+          
+          {/* Submenu */}
+          {isOpen && item.expanded && (
+            <div className="ml-3 mt-1 space-y-1 pl-2 border-l border-slate-200">
+              {item.submenu.map((subItem) => (
+                <NavLink
+                  key={subItem.path}
+                  to={subItem.path}
+                  className={({ isActive }) => `flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all text-[12px] ${
+                    isActive 
+                      ? "bg-indigo-50 text-indigo-700 font-medium" 
+                      : "text-slate-600 hover:bg-slate-50 hover:text-indigo-600"
+                  }`}
+                >
+                  <subItem.icon className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{subItem.title}</span>
+                </NavLink>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    } else {
+      return (
+        <NavLink
+          key={item.path}
+          to={item.path}
+          title={!isOpen ? item.title : ""}
+          className={({ isActive }) => `flex items-center ${isOpen ? "gap-2.5 px-3" : "justify-center px-0"} py-2.5 rounded-xl transition-all duration-200 group relative ${
+            isActive 
+              ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 shadow-sm shadow-indigo-100/50 font-semibold" 
+              : "text-slate-600 hover:bg-slate-50/80 hover:text-indigo-600"
+          }`}
+        >
+          <item.icon className={`w-4.5 h-4.5 transition-all flex-shrink-0 ${
+            location.pathname === item.path ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-600"
+          }`} />
+          <span className={`text-[13px] font-medium transition-all duration-200 whitespace-nowrap overflow-hidden ${
+            isOpen ? "opacity-100 w-auto" : "opacity-0 w-0"
+          }`}>
+            {item.title}
+          </span>
+        </NavLink>
+      );
+    }
+  };
 
   return (
     <>

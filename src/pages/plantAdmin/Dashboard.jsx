@@ -64,7 +64,10 @@ export default function PlantAdminDashboard() {
     const [chartData, setChartData] = useState({ statusDistribution: {}, submissionsPerForm: [], approvalsByEmployee: [], submissionsTrend: [], submissionsByUser: [] });
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => { fetchDashboardData(); }, []);
+    useEffect(() => { 
+      console.log("Dashboard mounted, user:", user);
+      fetchDashboardData(); 
+    }, []);
 
     const formatDate = useCallback((dateString) => {
       if (!dateString) return 'N/A';
@@ -80,9 +83,18 @@ export default function PlantAdminDashboard() {
 
     const fetchDashboardData = async () => {
       try {
+        console.log("Fetching dashboard data...");
+        console.log("User:", user);
+        const token = localStorage.getItem("token");
+        console.log("Token:", token ? "Present" : "Missing");
+        
         const [formsRes, submissionsRes, assignmentsRes, analyticsRes] = await Promise.all([
-          formApi.getForms(), submissionApi.getSubmissions(), assignmentApi.getPlantAssignments(), analyticsApi.getDashboardAnalytics(30)
+          formApi.getForms(),
+          submissionApi.getSubmissions(), 
+          assignmentApi.getPlantAssignments(),
+          analyticsApi.getDashboardAnalytics(30)
         ]);
+        console.log("API responses:", { formsRes, submissionsRes, assignmentsRes, analyticsRes });
         const forms = formsRes.success ? formsRes.data : (Array.isArray(formsRes) ? formsRes : []);
         const submissions = submissionsRes.success ? submissionsRes.data : (Array.isArray(submissionsRes) ? submissionsRes : []);
         const assignments = assignmentsRes.success ? assignmentsRes.data : (Array.isArray(assignmentsRes) ? assignmentsRes : []);
@@ -151,6 +163,7 @@ export default function PlantAdminDashboard() {
         });
         setRecentSubmissions(submissions.slice(0, 10));
       } catch (err) { 
+        console.error("Error fetching dashboard data:", err);
         // Error handling - could add toast notification here if needed
         setStats({ totalForms: 0, totalSubmissions: 0, recentApprovals: 0, pendingReview: 0, pendingAssignments: 0 });
       } finally { 

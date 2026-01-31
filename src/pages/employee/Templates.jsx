@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { formApi } from "../../api/form.api";
 import { submissionApi } from "../../api/submission.api";
@@ -14,6 +14,7 @@ import {
 
 export default function EmployeeTemplates() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [templates, setTemplates] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +23,15 @@ export default function EmployeeTemplates() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Refresh data when coming back from form filling
+  useEffect(() => {
+    if (location.state?.shouldRefresh) {
+      fetchData();
+      // Clear the refresh flag
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -48,8 +58,27 @@ export default function EmployeeTemplates() {
     }
   };
 
-  const isFormFilled = (formId) => {
-    return submissions.some(s => s.templateId?._id === formId || s.templateId === formId);
+  const getFormStatus = (formId) => {
+    const formSubmissions = submissions.filter(s => 
+      s.formId?._id === formId || s.formId === formId
+    );
+    
+    if (formSubmissions.length === 0) {
+      return { status: 'NOT_FILLED', submissions: [] };
+    }
+    
+    // Get the most recent submission status
+    const latestSubmission = formSubmissions.reduce((latest, current) => {
+      const latestDate = new Date(latest.createdAt || latest.submittedAt);
+      const currentDate = new Date(current.createdAt || current.submittedAt);
+      return currentDate > latestDate ? current : latest;
+    });
+    
+    return { 
+      status: latestSubmission.status || 'SUBMITTED',
+      submissions: formSubmissions,
+      latest: latestSubmission
+    };
   };
 
   const filteredTemplates = templates.filter(t => 
@@ -111,11 +140,53 @@ export default function EmployeeTemplates() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                       {filteredTemplates.map((template) => {
-                        const filled = isFormFilled(template._id);
+                        const formStatus = getFormStatus(template._id);
+                        const filled = formStatus.status !== 'NOT_FILLED';
+                        const statusConfig = {
+                          'NOT_FILLED': { 
+                            label: 'Not Filled', 
+                            color: 'bg-amber-50 text-amber-700 border-amber-100',
+                            icon: Clock
+                          },
+                          'DRAFT': { 
+                            label: 'Draft', 
+                            color: 'bg-gray-50 text-gray-700 border-gray-100',
+                            icon: FileText
+                          },
+                          'SUBMITTED': { 
+                            label: 'Submitted', 
+                            color: 'bg-blue-50 text-blue-700 border-blue-100',
+                            icon: CheckCircle2
+                          },
+                          'PENDING_APPROVAL': { 
+                            label: 'Pending Approval', 
+                            color: 'bg-yellow-50 text-yellow-700 border-yellow-100',
+                            icon: Clock
+                          },
+                          'APPROVED': { 
+                            label: 'Approved', 
+                            color: 'bg-green-50 text-green-700 border-green-100',
+                            icon: CheckCircle2
+                          },
+                          'REJECTED': { 
+                            label: 'Rejected', 
+                            color: 'bg-red-50 text-red-700 border-red-100',
+                            icon: FileText
+                          }
+                        };
+                        
+                        const currentStatus = statusConfig[formStatus.status] || statusConfig.NOT_FILLED;
+                        const StatusIcon = currentStatus.icon;
+                        
                         return (
                           <tr key={template._id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
                               {template.formName}
+                              {formStatus.submissions.length > 1 && (
+                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                  {formStatus.submissions.length} submissions
+                                </span>
+                              )}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-600">
                               <span 
@@ -126,17 +197,10 @@ export default function EmployeeTemplates() {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              {filled ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-100">
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  Filled
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
-                                  <Clock className="w-3.5 h-3.5" />
-                                  Not Filled
-                                </span>
-                              )}
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${currentStatus.color}`}>
+                                <StatusIcon className="w-3.5 h-3.5" />
+                                {currentStatus.label}
+                              </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">

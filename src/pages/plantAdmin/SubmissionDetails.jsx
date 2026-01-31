@@ -1,11 +1,68 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { 
+  ArrowLeft, 
+  Calendar, 
+  User, 
+  FileText, 
+  CheckCircle, 
+  Clock, 
+  XCircle,
+  Send
+} from "lucide-react";
 import { submissionApi } from "../../api/submission.api";
 import FormRenderer from "../../components/FormRenderer/FormRenderer";
-import { ArrowLeft, Loader2, Calendar, User, FileText, CheckCircle2, Clock, XCircle, Download, Printer } from "lucide-react";
-import { formatDate } from "../../utils/formatDate";
-import { CompanyHeader } from "../../components/common/CompanyHeader";
-import { exportElementToPDF } from "../../utils/exportUtils";
+import { format } from "date-fns";
+
+// Helper function to extract all fields from form
+const getFormFields = (form) => {
+  if (!form) return [];
+  
+  let allFields = [...(form.fields || [])];
+  
+  if (form.sections) {
+    form.sections.forEach(section => {
+      if (section.fields) {
+        allFields = [...allFields, ...section.fields];
+      }
+    });
+  }
+  
+  // Filter out non-data fields and remove duplicates
+  const uniqueFields = [];
+  const seenIds = new Set();
+  
+  allFields.forEach(field => {
+    const fieldId = field.fieldId || field.id;
+    if (fieldId && !seenIds.has(fieldId) && 
+        !["section-divider", "section-header", "spacer", "columns-2", "columns-3"].includes(field.type)) {
+      seenIds.add(fieldId);
+      uniqueFields.push(field);
+    }
+  });
+  
+  return uniqueFields;
+};
+
+function StatusBadge({ status }) {
+  const statusConfig = {
+    DRAFT: { color: "bg-gray-100 text-gray-800", icon: FileText, label: "Draft" },
+    SUBMITTED: { color: "bg-blue-100 text-blue-800", icon: Send, label: "Submitted" },
+    PENDING_APPROVAL: { color: "bg-yellow-100 text-yellow-800", icon: Clock, label: "Pending Approval" },
+    APPROVED: { color: "bg-green-100 text-green-800", icon: CheckCircle, label: "Approved" },
+    REJECTED: { color: "bg-red-100 text-red-800", icon: XCircle, label: "Rejected" }
+  };
+
+  const config = statusConfig[status] || statusConfig.DRAFT;
+  const Icon = config.icon;
+
+  return (
+    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
+      <Icon className="w-4 h-4 mr-2" />
+      {config.label}
+    </span>
+  );
+}
 
 export default function SubmissionDetails() {
   const { id } = useParams();
@@ -13,190 +70,233 @@ export default function SubmissionDetails() {
   const [submission, setSubmission] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [exporting, setExporting] = useState(false);
-  const contentRef = useRef(null);
 
   useEffect(() => {
     fetchSubmission();
   }, [id]);
 
-  const handleDownloadPDF = async () => {
-    if (!contentRef.current) return;
-    try {
-      setExporting(true);
-      await exportElementToPDF(contentRef.current, `Submission_${id}`);
-    } catch (err) {
-      console.error("PDF Export failed:", err);
-    } finally {
-      setExporting(false);
-    }
-  };
-
   const fetchSubmission = async () => {
     try {
       setLoading(true);
-      const res = await submissionApi.getSubmissionById(id);
-      if (res.success) {
-        setSubmission(res.data);
+      const response = await submissionApi.getSubmissionById(id);
+      if (response.success) {
+        setSubmission(response.data);
       } else {
-        setError(res.message || "Failed to fetch submission details");
+        setError("Submission not found");
       }
     } catch (err) {
-      setError(err.response?.data?.message || err.message || "Error fetching submission");
+      setError("Failed to load submission");
+      console.error("Error fetching submission:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "approved": return "bg-green-100 text-green-700 border-green-200";
-      case "rejected": return "bg-red-100 text-red-700 border-red-200";
-      case "submitted": return "bg-blue-100 text-blue-700 border-blue-200";
-      default: return "bg-gray-100 text-gray-700 border-gray-200";
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "approved": return <CheckCircle2 className="w-4 h-4" />;
-      case "rejected": return <XCircle className="w-4 h-4" />;
-      case "submitted": return <Clock className="w-4 h-4" />;
-      default: return <Clock className="w-4 h-4" />;
-    }
-  };
-
   if (loading) {
     return (
-      <div className="min-h-[400px] flex flex-col items-center justify-center">
-        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
-        <p className="text-gray-500 font-medium">Loading submission details...</p>
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white p-6 rounded-lg border border-gray-200">
+                <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+              </div>
+            ))}
+          </div>
+          <div className="bg-white p-6 rounded-lg border border-gray-200 h-96"></div>
+        </div>
       </div>
     );
   }
 
   if (error || !submission) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
-        <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-red-800 mb-2">Error</h2>
-        <p className="text-red-600 mb-6">{error || "Submission not found"}</p>
-        <button
-          onClick={() => navigate(-1)}
-          className="bg-red-600 text-white px-6 py-2 rounded-xl hover:bg-red-700 transition-colors font-semibold"
-        >
-          Go Back
-        </button>
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+          <XCircle className="mx-auto h-12 w-12 text-red-400" />
+          <h3 className="mt-2 text-lg font-medium text-gray-900">{error || "Submission not found"}</h3>
+          <button
+            onClick={() => navigate("/plant/submissions")}
+            className="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Submissions
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-12">
-      {/* Company Header */}
-      <CompanyHeader />
-
+    <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-white rounded-xl transition-colors shadow-sm border border-gray-100"
-          >
-            <ArrowLeft className="w-6 h-6 text-gray-600" />
-          </button>
+      <div className="mb-6">
+        <button
+          onClick={() => navigate("/plant/submissions")}
+          className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Submissions
+        </button>
+        
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{submission.formId?.formName}</h1>
-            <p className="text-gray-500">Submission Details & Review</p>
+            <h1 className="text-2xl font-bold text-gray-900">{submission.formName}</h1>
+            <p className="mt-1 text-gray-600">Submission #{submission.numericalId}</p>
+          </div>
+          
+          <StatusBadge status={submission.status} />
+        </div>
+      </div>
+
+      {/* Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <div className="flex items-center">
+            <Calendar className="w-5 h-5 text-gray-400 mr-3" />
+            <div>
+              <p className="text-sm text-gray-600">Submitted</p>
+              <p className="font-medium text-gray-900">
+                {format(new Date(submission.submittedAt), "MMM d, yyyy h:mm a")}
+              </p>
+            </div>
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleDownloadPDF}
-            disabled={exporting}
-            className="inline-flex items-center gap-2 bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-all shadow-sm disabled:opacity-50"
-          >
-            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Export PDF
-          </button>
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-bold uppercase tracking-wider ${getStatusColor(submission.status)}`}>
-            {getStatusIcon(submission.status)}
-            {submission.status}
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <div className="flex items-center">
+            <User className="w-5 h-5 text-gray-400 mr-3" />
+            <div>
+              <p className="text-sm text-gray-600">Submitted By</p>
+              <p className="font-medium text-gray-900">{submission.submittedByName}</p>
+              <p className="text-sm text-gray-500">{submission.submittedByEmail}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <div className="flex items-center">
+            <FileText className="w-5 h-5 text-gray-400 mr-3" />
+            <div>
+              <p className="text-sm text-gray-600">Status</p>
+              <StatusBadge status={submission.status} />
+            </div>
           </div>
         </div>
       </div>
 
-      <div ref={contentRef} className="space-y-8 bg-white p-[10mm] rounded-3xl shadow-sm border border-gray-100">
-        <CompanyHeader />
-        {/* Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4">
-            <div className="p-3 bg-indigo-50 rounded-xl">
-              <User className="w-6 h-6 text-indigo-600" />
-            </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Submitted By</p>
-                <p className="text-lg font-bold text-gray-900">{submission.submittedBy?.name || submission.submittedBy}</p>
-              </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4">
-            <div className="p-3 bg-purple-50 rounded-xl">
-              <Calendar className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Submission Date</p>
-              <p className="text-lg font-bold text-gray-900">{formatDate(submission.createdAt)}</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4">
-            <div className="p-3 bg-blue-50 rounded-xl">
-              <FileText className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Form ID</p>
-              <p className="text-lg font-bold text-gray-900 truncate max-w-[150px]">{submission.formId?._id}</p>
-            </div>
-          </div>
+      {/* Form Data */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-medium text-gray-900">Form Data</h2>
         </div>
-
-        {/* Submitted Content */}
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
-          <div className="bg-gradient-to-r from-gray-800 to-gray-900 px-8 py-6 text-white flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileText className="w-6 h-6 opacity-80" />
-              <h2 className="text-xl font-bold tracking-tight">Submitted Form Data</h2>
+        <div className="p-6">
+          {submission.data ? (
+            <div className="space-y-4">
+              {getFormFields(submission.formId).map((field) => {
+                const fieldValue = submission.data[field.fieldId] || submission.data[field.id];
+                if (fieldValue === undefined || fieldValue === null) return null;
+                
+                return (
+                  <div key={field.fieldId || field.id} className="border border-gray-200 rounded-lg p-4">
+                    <h3 className="font-medium text-gray-900 mb-2">
+                      {field.label || field.question || (field.fieldId || field.id).replace(/([A-Z])/g, ' $1').trim()}
+                    </h3>
+                    {typeof fieldValue === 'string' && fieldValue.startsWith('http') ? (
+                      <a 
+                        href={fieldValue} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 hover:text-indigo-800 underline"
+                      >
+                        {fieldValue}
+                      </a>
+                    ) : (
+                      <p className="text-gray-700">{String(fieldValue)}</p>
+                    )}
+                  </div>
+                );
+              }).filter(Boolean)}
             </div>
-          </div>
-          
-          <div className="p-8 md:p-12 bg-gray-50/30">
-            <FormRenderer 
-              fields={submission.formId?.fields} 
-              initialData={submission.data}
-              readOnly={true}
-            />
-          </div>
+          ) : (
+            <p className="text-gray-500 italic">No form data available</p>
+          )}
         </div>
-
-        {/* Approval Timeline/History (Optional) */}
-        {submission.status !== "submitted" && (
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Approval Summary</h3>
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-              <div className={`p-2 rounded-full ${submission.status === "approved" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}>
-                {getStatusIcon(submission.status)}
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">
-                  This submission was <span className="font-bold">{submission.status}</span>.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Files Section */}
+      {submission.files && submission.files.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mt-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">Attached Files</h2>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {submission.files.map((file, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">{file.originalName}</p>
+                      <p className="text-sm text-gray-500">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                    >
+                      View
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approval History */}
+      {submission.approvalHistory && submission.approvalHistory.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mt-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">Approval History</h2>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
+              {submission.approvalHistory.map((history, index) => (
+                <div key={index} className="flex items-start">
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                    history.status === 'APPROVED' ? 'bg-green-100' : 'bg-red-100'
+                  }`}>
+                    {history.status === 'APPROVED' ? (
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-red-600" />
+                    )}
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-900">
+                        Level {history.level} - {history.status}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(history.actionedAt), "MMM d, yyyy h:mm a")}
+                      </p>
+                    </div>
+                    {history.comments && (
+                      <p className="mt-1 text-sm text-gray-600">{history.comments}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

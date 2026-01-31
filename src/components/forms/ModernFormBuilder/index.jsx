@@ -265,18 +265,14 @@ export default function ModernFormBuilder({ formId }) {
     }
 
     if (isPublish) {
-      // Validate workflow levels only on publish
-      if (!workflow || workflow.length === 0) {
-        toast.error("Please select an Approval Workflow");
-        setActiveView("workflow");
-        return;
-      }
-
-      const incompleteLevel = workflow.find(l => !l.approverId);
-      if (incompleteLevel) {
-        toast.error("Please assign an approver to all workflow levels");
-        setActiveView("workflow");
-        return;
+      // Validate workflow levels only on publish if workflow exists
+      if (workflow && workflow.length > 0) {
+        const incompleteLevel = workflow.find(l => !l.approverId);
+        if (incompleteLevel) {
+          toast.error("Please assign an approver to all workflow levels");
+          setActiveView("workflow");
+          return;
+        }
       }
     }
 

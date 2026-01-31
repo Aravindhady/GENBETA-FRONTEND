@@ -182,15 +182,13 @@ export default function FormBuilder() {
       return false;
     }
 
-    if (!approvalFlow || approvalFlow.length === 0) {
-      setError("Please select an Approval Workflow");
-      return false;
-    }
-
-    for (const flow of approvalFlow) {
-      if (!flow.approverId) {
-        setError(`Please select an approver for Level ${flow.level}`);
-        return false;
+    // Skip the approval flow validation if no approval flow is provided
+    if (approvalFlow && approvalFlow.length > 0) {
+      for (const flow of approvalFlow) {
+        if (!flow.approverId) {
+          setError(`Please select an approver for Level ${flow.level}`);
+          return false;
+        }
       }
     }
 

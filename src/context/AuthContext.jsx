@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
 
 const AuthContext = createContext();
 
@@ -18,49 +17,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      // Check if token is expired
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const exp = payload.exp * 1000; // Convert to milliseconds
-        if (Date.now() >= exp) {
-          // Token expired
-          logout();
-          window.location.href = "/login";
-        }
-      } catch (e) {
-        // Invalid token format
-        logout();
-        window.location.href = "/login";
-      }
     } else {
       delete axios.defaults.headers.common["Authorization"];
     }
-  }, [token]);
-
-  // Periodic token expiration check
-  useEffect(() => {
-    if (!token) return;
-    
-    const interval = setInterval(() => {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const exp = payload.exp * 1000;
-        if (Date.now() >= exp) {
-          logout();
-          clearInterval(interval);
-          toast.error("Your session has expired. Redirecting to login...");
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 2000);
-        }
-      } catch (e) {
-        logout();
-        clearInterval(interval);
-        window.location.href = "/login";
-      }
-    }, 60000); // Check every minute
-    
-    return () => clearInterval(interval);
   }, [token]);
 
   const login = (newToken, newUser) => {
@@ -81,6 +40,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("user");
     setToken(null);
     setUser(null);
+    
+    // Redirect to login page after logout
+    window.location.href = "/login";
   };
 
   return (

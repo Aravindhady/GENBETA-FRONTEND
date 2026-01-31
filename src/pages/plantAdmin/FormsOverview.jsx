@@ -76,7 +76,7 @@ export default function FormsOverview() {
           lastUpdated: t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A',
           isLegacy: true
         })),
-        ...modernForms.filter(f => f.isTemplate || f.status === 'DRAFT').map(f => ({
+        ...modernForms.filter(f => f.isTemplate || f.status === 'PUBLISHED').map(f => ({
           id: f._id,
           name: f.formName,
           formCode: f.numericalId ? `F-${f.numericalId.toString().padStart(3, '0')}` : (f.formId || 'N/A'),
@@ -152,9 +152,9 @@ export default function FormsOverview() {
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           {[
             { label: 'Total Templates', value: templates.length, sub: 'Across all status' },
-            { label: 'Drafts', value: templates.filter(t => t.status === 'Draft').length, sub: 'Not yet published' },
             { label: 'Published', value: templates.filter(t => t.status === 'Published').length, sub: 'Currently active' },
             { label: 'Archived', value: templates.filter(t => t.status === 'Archived').length, sub: 'Read-only' },
+            { label: 'Templates', value: templates.filter(t => t.isTemplate).length, sub: 'Reusable form structures' },
           ].map((stat, i) => (
           <div key={i} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-1">
             <p className="text-[13px] font-medium text-gray-500">{stat.label}</p>

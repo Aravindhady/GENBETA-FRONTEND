@@ -84,7 +84,7 @@ export default function FillFormPage() {
     
     if (response.success) {
       toast.success("Form submitted successfully!");
-      navigate("/employee");
+      navigate("/employee", { state: { shouldRefresh: true } });
     } else {
       const msg = response.message || "Failed to submit form";
       setError(msg);

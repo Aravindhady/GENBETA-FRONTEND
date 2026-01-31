@@ -47,36 +47,13 @@ export default function FormsCardView() {
   const [selectedSubmissions, setSelectedSubmissions] = useState([]);
   const [showExportMenu, setShowExportMenu] = useState(null);
   const [exportingId, setExportingId] = useState(null);
-  const [templateFeatureEnabled, setTemplateFeatureEnabled] = useState(false);
+
 
   useEffect(() => {
     fetchData();
-    checkTemplateFeatureStatus();
   }, []);
 
-  const checkTemplateFeatureStatus = async () => {
-    if (user?.role !== "PLANT_ADMIN" || !user?.plantId) {
-      setTemplateFeatureEnabled(false);
-      return;
-    }
-    try {
-      const response = await api.get("/api/plants/my-plant");
-      if (response?.data) {
-        const plant = response.data.plant;
-        const company = response.data.company;
-        let enabled = false;
-        if (plant.templateFeatureEnabled !== null && plant.templateFeatureEnabled !== undefined) {
-          enabled = plant.templateFeatureEnabled;
-        } else {
-          enabled = company?.templateFeatureEnabled || false;
-        }
-        setTemplateFeatureEnabled(enabled);
-      }
-    } catch (err) {
-      console.error("Failed to check template feature status:", err);
-      setTemplateFeatureEnabled(false);
-    }
-  };
+
 
   const fetchData = async () => {
     try {
@@ -280,34 +257,7 @@ const getStatusColor = (status) => {
       }
     };
   
-    const handleSaveAsTemplate = async (form) => {
-      if (!templateFeatureEnabled) {
-        toast.error("Template feature is not enabled for your plant. Contact super admin.");
-        return;
-      }
-      if (!confirm(`Save "${form.formName}" as a template (Facility)? It will also appear for employees to fill.`)) {
-        return;
-      }
-      
-      try {
-        // Update the form to be a template
-        const response = await formApi.updateForm(form._id, {
-          ...form,
-          isTemplate: true,
-          status: "PUBLISHED"
-        });
-        
-        if (response.success) {
-          toast.success("Form saved as template (Facility) successfully!");
-          fetchData(); // Refresh the list
-        } else {
-          toast.error(response.message || "Failed to save as template");
-        }
-      } catch (err) {
-        console.error("Save as template error:", err);
-        toast.error(err.response?.data?.message || "Failed to save as template");
-      }
-    };
+
 
     const handleExportFormData = async (form) => {
       setExportingId(form._id);
@@ -696,15 +646,7 @@ const getStatusColor = (status) => {
                                     </div>
                                   )}
                               </div>
-                              {!form.isTemplate && user?.role === "PLANT_ADMIN" && templateFeatureEnabled && (
-                                <button
-                                  onClick={() => handleSaveAsTemplate(form)}
-                                  className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                                  title="Save as Template"
-                                >
-                                  <Copy className="w-4 h-4" />
-                                </button>
-                              )}
+
                               <button
                                 onClick={() => handleFormClick(form)}
                                 className="inline-flex items-center text-[13px] font-semibold text-gray-400 hover:text-indigo-600 transition-colors"
@@ -806,18 +748,11 @@ const getStatusColor = (status) => {
                                 )}
                               </div>
                               <button 
-                                onClick={(e) => { e.stopPropagation(); handleViewSubmission(s); }}
+                                onClick={(e) => { e.stopPropagation(); navigate(`/${user.role.toLowerCase().replace('_admin', '')}/submissions/${s._id}`); }}
                                 className="p-1.5 hover:bg-indigo-50 rounded-md text-gray-400 hover:text-indigo-600 transition-colors"
                                 title="Quick View"
                               >
                                 <Eye className="w-4 h-4" />
-                              </button>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); navigate(`/${user.role.toLowerCase().replace('_admin', '')}/submissions/${s._id}`); }}
-                                className="p-1.5 hover:bg-gray-50 rounded-md text-gray-400 hover:text-gray-600 transition-colors"
-                                title="Full Details"
-                              >
-                                <ChevronRight className="w-4 h-4" />
                               </button>
                             </div>
                           </td>

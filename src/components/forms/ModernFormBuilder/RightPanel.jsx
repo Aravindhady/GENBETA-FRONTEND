@@ -79,6 +79,35 @@ export default function RightPanel({ selectedField, updateField, deleteField }) 
           />
         </div>
 
+        {/* Approval Email Toggle - NEW FEATURE */}
+        <div className="space-y-2 pt-2">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Approval Email</label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Include in email to approvers</span>
+              <div 
+                onClick={() => handleChange("includeInApprovalEmail", !selectedField.includeInApprovalEmail)}
+                className={`relative w-10 h-5 rounded-full cursor-pointer transition-all ${
+                  selectedField.includeInApprovalEmail 
+                    ? "bg-indigo-600" 
+                    : "bg-gray-300"
+                }`}
+              >
+                <div 
+                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all transform ${
+                    selectedField.includeInApprovalEmail 
+                      ? "translate-x-5" 
+                      : "translate-x-0.5"
+                  }`}
+                />
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400">
+            When enabled, this field's value will be included in approval emails sent to approvers.
+          </p>
+        </div>
+
         {/* Content Editor for Terms/Description */}
         {["terms", "description"].includes(selectedField.type) && (
           <div className="space-y-2">

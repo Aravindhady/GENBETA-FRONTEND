@@ -54,16 +54,11 @@ apiClient.interceptors.response.use(
     // Handle HTTP errors
     const { status, data } = error.response;
 
-    // 401 Unauthorized - Clear token and redirect to login
+    // 401 Unauthorized - Handle without automatic logout
     if (status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      // Show session expired message
-      toast.error("Your session has expired. Redirecting to login...");
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 2000);
-      return Promise.reject(new Error("Session expired. Please login again."));
+      // Optionally notify user about authentication issue
+      // but don't automatically redirect to maintain session
+      return Promise.reject(new Error(data.message || "Authentication failed. Please login again."));
     }
 
     // 403 Forbidden

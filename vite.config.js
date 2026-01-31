@@ -13,15 +13,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://genbeta-backend.onrender.com',
+        target: 'http://localhost:5002',
         changeOrigin: true,
-        secure: false, // Allow self-signed certificates
-        headers: {
-          'origin': 'https://genbeta-backend.onrender.com'
-        }
+        secure: false,
       },
       '/uploads': {
-        target: 'https://genbeta-backend.onrender.com',
+        target: 'http://localhost:5002',
         changeOrigin: true,
         secure: false
       }

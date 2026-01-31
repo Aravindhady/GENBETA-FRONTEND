@@ -3,7 +3,6 @@ import { Plus, Search, MapPin, Building2, User, Trash2, Edit, MoreVertical, Exte
 import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import api from "../../api/api";
-import EditPlantModal from "../../components/modals/EditPlantModal";
 
 export default function PlantList() {
   const [plants, setPlants] = useState([]);
@@ -142,13 +141,13 @@ export default function PlantList() {
                     </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                        <button 
-                          onClick={() => setEditingPlant(plant)}
+                        <Link
+                          to={`/company/plants/${plant._id}/edit`}
                           className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                           title="Edit Plant"
                         >
                           <Edit className="w-4 h-4" />
-                        </button>
+                        </Link>
                         <button 
                           onClick={() => handleDelete(plant._id)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -180,13 +179,7 @@ export default function PlantList() {
         </div>
       </div>
 
-      {editingPlant && (
-        <EditPlantModal 
-          plant={editingPlant} 
-          onClose={() => setEditingPlant(null)} 
-          onSaved={fetchPlants} 
-        />
-      )}
+
     </div>
   );
 }

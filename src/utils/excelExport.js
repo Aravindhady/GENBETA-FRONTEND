@@ -183,18 +183,34 @@ export const formatSubmissionsForExport = (submissions) => {
     }
 
     const formData = s.data || s.responses || {};
+    
+    // Get form fields if available to map field IDs to labels
+    const formFields = (s.formId?.fields || s.templateId?.fields || [])
+      .concat((s.formId?.sections || s.templateId?.sections || []).flatMap(sec => sec.fields || []))
+      .filter(f => !["section-divider", "section-header", "spacer", "columns-2", "columns-3"].includes(f.type));
+    
     Object.entries(formData).forEach(([key, value]) => {
       if (value === null || value === undefined) return;
       
+      // Try to find the field label
+      let fieldLabel = key;
+      const field = formFields.find(f => f.fieldId === key || f.id === key);
+      if (field) {
+        fieldLabel = field.label || field.question || key;
+      } else {
+        // Fallback formatting for raw keys
+        fieldLabel = key.replace(/([A-Z])/g, ' $1').trim();
+      }
+      
       if (typeof value !== 'object') {
-        row[`Data: ${key}`] = value;
+        row[`Data: ${fieldLabel}`] = value;
       } else if (Array.isArray(value)) {
-        row[`Data: ${key}`] = value.join(', ');
+        row[`Data: ${fieldLabel}`] = value.join(', ');
       } else {
         const flattened = Object.entries(value)
           .map(([subKey, subVal]) => `${subKey}: ${subVal}`)
           .join(' | ');
-        row[`Data: ${key}`] = flattened;
+        row[`Data: ${fieldLabel}`] = flattened;
       }
     });
 

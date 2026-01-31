@@ -43,7 +43,8 @@ export default function ApprovalDetail() {
 
       if (res.success) {
         const assignedItem = assigned.data?.find(a => a._id === id);
-        const template = res.data.templateId || res.data.formId;
+        // Fix: Always use formId since that's what the backend returns
+        const template = res.data.formId;
         const flow = template?.approvalFlow || [];
         const currentLevel = res.data.currentLevel || 1;
         
@@ -77,9 +78,20 @@ export default function ApprovalDetail() {
           pendingApproverName
         });
         setFormData(res.data.data || {});
+        // Debug: Log the data structure
+        console.log('Submission data:', res.data);
+        console.log('Form data:', res.data.data);
+        console.log('Template:', template);
+        console.log('Template fields:', template?.fields);
+        console.log('Template sections:', template?.sections);
+      } else {
+        // Set submission to null if API call was unsuccessful
+        setSubmission(null);
       }
     } catch (error) {
       console.error("Error fetching approval data:", error);
+      // Set submission to null if there's an error
+      setSubmission(null);
     }
     setLoading(false);
   };
@@ -128,7 +140,27 @@ export default function ApprovalDetail() {
 
   if (loading) return <Loader />;
 
-  const template = submission.templateId || submission.formId;
+  if (!submission) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-4">
+        <div className="text-center max-w-md mx-auto">
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+            <XCircle className="text-red-600 w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Submission Not Found</h2>
+          <p className="text-gray-600 mb-6">The submission you're looking for doesn't exist or you don't have permission to view it.</p>
+          <button 
+            onClick={() => navigate(-1)}
+            className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-semibold"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const template = submission.formId;
   const { approvalHistory, isMyTurn, pendingApproverName } = submission;
   const submitterName = submission.submittedBy?.name || "Employee";
 

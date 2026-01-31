@@ -64,14 +64,13 @@ export const assignmentApi = {
   submitAssignment: async (id, data, files = []) => {
     try {
       const formData = new FormData();
-      formData.append("assignmentId", id);
       formData.append("data", JSON.stringify(data));
 
       files.forEach((file) => {
         formData.append(file.fieldId, file.file);
       });
 
-      const response = await api.post("/api/submissions", formData, {
+      const response = await api.post(`/api/formTask/${id}/submit`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
       return response.data;
@@ -86,14 +85,13 @@ export const assignmentApi = {
   submitDirect: async (templateId, data, files = []) => {
     try {
       const formData = new FormData();
-      formData.append("templateId", templateId);
       formData.append("data", JSON.stringify(data));
 
       files.forEach((file) => {
         formData.append(file.fieldId, file.file);
       });
 
-      const response = await api.post("/api/submissions", formData, {
+      const response = await api.post(`/api/form-task/submit-direct/${templateId}`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
       return response.data;

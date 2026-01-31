@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Menu, User } from "lucide-react";
+import { LogOut, Menu, User, Building2, ChevronDown } from "lucide-react";
+import logo from "../../assets/Matapang.png";
 
 export default function Topbar({ onMenuClick }) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -11,70 +14,119 @@ export default function Topbar({ onMenuClick }) {
     navigate("/");
   };
 
+  const handleProfileClick = () => {
+    navigate("/profile");
+    setDropdownOpen(false);
+  };
+
+  const toggleDropdown = () => {
+    setDropdownOpen(!dropdownOpen);
+  };
+
   const getRoleDisplay = (role) => {
     const roleMap = {
       SUPER_ADMIN: "Super Admin",
       PLANT_ADMIN: "Plant Admin",
       COMPANY_ADMIN: "Company Admin",
-      CLIENT: "Client"
+      CLIENT: "Client",
+      EMPLOYEE: "Employee",
     };
     return roleMap[role] || role;
   };
 
   return (
-    <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-sm sticky top-0 z-40">
-      <div className="flex items-center justify-between px-4 md:px-6 py-4">
-        {/* Left: Menu Button */}
-        <button
-          onClick={onMenuClick}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors lg:hidden"
-          aria-label="Toggle menu"
-        >
-          <Menu className="w-6 h-6 text-gray-600" />
-        </button>
+    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200 shadow-sm">
+      <div className="h-16 px-4 md:px-6 flex items-center justify-between">
 
-        {/* Center: Title (optional) */}
-        <div className="flex-1 lg:ml-0 ml-4">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent animate-gradient">
-            GenBeta
-          </h1>
+        {/* Left: Menu */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onMenuClick}
+            className="lg:hidden p-2 rounded-xl hover:bg-slate-100 transition"
+            aria-label="Toggle menu"
+          >
+            <Menu className="w-6 h-6 text-slate-600" />
+          </button>
+
+          {/* Logo (Desktop) */}
+          <div className="hidden lg:flex items-center">
+            <div className="bg-white px-4 py-2 ">
+              <img
+                src={logo}
+                alt="Matapang Logo"
+                className="h-12 w-auto object-contain"
+              />
+            </div>
+          </div>
         </div>
 
-          {/* Right: User Info & Logout */}
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-slate-50 to-indigo-50/30 rounded-xl border border-slate-200/60 shadow-sm">
-              <div className="w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
-                {user?.companyLogo ? (
-                  <img 
-                    src={user.companyLogo} 
-                    alt={user.companyName} 
-                    className="w-full h-full object-contain p-1"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                )}
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-slate-800">{user?.name || "User"}</p>
-                <p className="text-xs text-slate-500 font-medium">{getRoleDisplay(user?.role)}</p>
-              </div>
-            </div>
+        {/* Center: Logo (Mobile) */}
+        <div className="lg:hidden flex justify-center flex-1">
+          <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+            <img
+              src={logo}
+              alt="Matapang Logo"
+              className="h-8 w-auto object-contain"
+            />
+          </div>
+        </div>
 
+        {/* Right: Profile Dropdown */}
+        <div className="relative">
           <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 font-semibold text-sm shadow-md hover:shadow-lg shadow-red-500/20"
+            onClick={toggleDropdown}
+            className="p-2 rounded-xl hover:bg-slate-100 transition-colors flex items-center gap-1"
           >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Logout</span>
+            <User className="w-5 h-5 text-slate-600" />
+            <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
           </button>
+
+          {/* Dropdown Menu */}
+          {dropdownOpen && (
+            <>
+              {/* Backdrop */}
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setDropdownOpen(false)}
+              />
+              
+              {/* Dropdown */}
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                {/* User Info */}
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <p className="text-sm font-semibold text-slate-800 truncate">
+                    {user?.name || "User"}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Building2 className="w-3 h-3 text-indigo-500" />
+                    <p className="text-xs text-indigo-600 font-medium truncate">
+                      {user?.companyName || getRoleDisplay(user?.role)}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Profile Option */}
+                <button
+                  onClick={handleProfileClick}
+                  className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3 transition-colors"
+                >
+                  <User className="w-4 h-4 text-slate-500" />
+                  <span>Profile</span>
+                </button>
+                
+                {/* Logout Option */}
+                <button
+                  onClick={handleLogout}
+                  className="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
-    </div>
+    </header>
   );
 }
-
-
-
-

@@ -36,5 +36,9 @@ export const formApi = {
   restoreForm: async (id) => {
     const response = await api.patch(`/api/forms/${id}/restore`);
     return { ...response.data, success: true };
+  },
+  toggleTemplateStatus: async (id, isTemplate) => {
+    const response = await api.patch(`/api/forms/${id}/toggle-template`, { isTemplate });
+    return { ...response.data, success: true };
   }
 };
