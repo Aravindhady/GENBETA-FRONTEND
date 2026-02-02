@@ -4,7 +4,7 @@ import { toast } from "react-hot-toast";
 import { assignmentApi } from "../../api/assignment.api";
 import { formApi } from "../../api/form.api";
 import FormRenderer from "../../components/FormRenderer/FormRenderer";
-import { ArrowLeft, Loader2, FileText, User, Calendar, Send, ShieldCheck, ArrowRight } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, User, Calendar, Send } from "lucide-react";
 
 export default function FillFormPage() {
   const { taskId, formId, assignmentId } = useParams();
@@ -25,37 +25,37 @@ export default function FillFormPage() {
     }
   }, [taskId, formId, assignmentId]);
 
-    const fetchAssignment = async () => {
-      setLoading(true);
-      try {
-        const response = await assignmentApi.getAssignmentById(assignmentId);
-        if (response.success) {
-          setTask(response.data);
-          setForm(response.data.templateId);
-          if (response.data.status === "FILLED") {
-            setError("This assignment has already been filled.");
-          }
-        } else {
-          setError(response.message || "Failed to load assignment");
-        }
-      } catch (err) {
-        setError("An error occurred while fetching the assignment");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchTask = async () => {
-      setLoading(true);
-      const response = await assignmentApi.getTaskById(taskId);
+  const fetchAssignment = async () => {
+    setLoading(true);
+    try {
+      const response = await assignmentApi.getAssignmentById(assignmentId);
       if (response.success) {
         setTask(response.data);
         setForm(response.data.templateId);
+        if (response.data.status === "FILLED") {
+          setError("This assignment has already been filled.");
+        }
       } else {
-        setError(response.message || "Failed to load form");
+        setError(response.message || "Failed to load assignment");
       }
+    } catch (err) {
+      setError("An error occurred while fetching the assignment");
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  const fetchTask = async () => {
+    setLoading(true);
+    const response = await assignmentApi.getTaskById(taskId);
+    if (response.success) {
+      setTask(response.data);
+      setForm(response.data.templateId);
+    } else {
+      setError(response.message || "Failed to load form");
+    }
+    setLoading(false);
+  };
 
   const fetchForm = async () => {
     setLoading(true);
@@ -68,10 +68,10 @@ export default function FillFormPage() {
     setLoading(false);
   };
 
-    const handleSubmit = async (formData, files = []) => {
-      setSubmitting(true);
-      setError("");
-  
+  const handleSubmit = async (formData, files = []) => {
+    setSubmitting(true);
+    setError("");
+
     let response;
     if (assignmentId) {
       response = await assignmentApi.submitAssignment(assignmentId, formData, files);
@@ -81,7 +81,6 @@ export default function FillFormPage() {
       response = await assignmentApi.submitDirect(formId, formData, files);
     }
 
-    
     if (response.success) {
       toast.success("Form submitted successfully!");
       navigate("/employee", { state: { shouldRefresh: true } });
@@ -133,10 +132,9 @@ export default function FillFormPage() {
           <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
             <FileText className="w-6 h-6 text-indigo-600" />
           </div>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold text-gray-900">{form?.templateName || form?.formName}</h1>
-              <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold text-gray-900">{form?.templateName || form?.formName}</h1>
+            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
               <div className="flex items-center gap-1">
                 <User className="w-4 h-4" />
                 <span>{taskId ? `Assigned by: ${task?.assignedBy?.name || "Admin"}` : "Facility"}</span>
@@ -151,53 +149,19 @@ export default function FillFormPage() {
           </div>
         </div>
 
-          {error && (
-            <div className="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
+        {error && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
 
-          {/* Workflow Sequence Display */}
-          {form?.approvalFlow && form.approvalFlow.length > 0 && (
-            <div className="mb-10 bg-slate-50 rounded-3xl p-8 border border-slate-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-100 shadow-sm">
-                  <ShieldCheck className="w-5 h-5 text-indigo-600" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Approval Sequence</h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Required verification layers</p>
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-4">
-                {form.approvalFlow.map((level, idx) => (
-                  <div key={idx} className="flex items-center gap-4">
-                    <div className="flex items-center gap-3 bg-white pl-2 pr-5 py-2 rounded-2xl border border-slate-100 shadow-sm">
-                      <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-[10px] font-black">
-                        {idx + 1}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter leading-none mb-1">{level.name}</span>
-                        <span className="text-[11px] font-bold text-slate-700">{level.approverId?.name || "Unassigned"}</span>
-                      </div>
-                    </div>
-                    {idx < form.approvalFlow.length - 1 && (
-                      <ArrowRight className="w-4 h-4 text-slate-300" />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-            {!error && (
-              <FormRenderer
-                form={form}
-                onSubmit={handleSubmit}
-                submitting={submitting}
-              />
-            )}
+        {!error && (
+          <FormRenderer
+            form={form}
+            onSubmit={handleSubmit}
+            submitting={submitting}
+          />
+        )}
       </div>
     </div>
   );

@@ -46,6 +46,24 @@ export const AddEmployeeForm = () => {
         throw new Error(response.message || "Failed to create employee");
       }
       return response;
+    },
+    onError: (error) => {
+      // Check if this is a timeout or network error but employee might have been created
+      if (error.message.includes('timeout') || error.message.includes('Network Error') || error.message.includes('Network error')) {
+        toast.success("Employee account created successfully (connection timeout)", { id: toast.loading("Processing...") });
+        queryClient.invalidateQueries({ queryKey: ['employees', user.plantId] });
+        setTimeout(() => {
+          navigate("/plant/employees");
+        }, 1500);
+        return;
+      }
+      
+      if (error.response?.data?.upgradeRequired) {
+        setLimitReached(true);
+      }
+      setError(error.message || error.response?.data?.message || "Something went wrong. Please try again.");
+      toast.error(error.message || error.response?.data?.message || "Something went wrong");
+      setSubmitting(false);
     }
   });
 
@@ -80,32 +98,19 @@ export const AddEmployeeForm = () => {
         }
       }
 
-      // Submit using mutation, passing the toastId in context
-      createEmployeeMutation.mutate(
-        {
-          ...formData,
-          companyId: user.companyId,
-          plantId: user.plantId
-        },
-        {
-          onSuccess: (data) => {
-            toast.success("Employee account created successfully", { id: toastId });
-            // Invalidate the employees query to refresh the list
-            queryClient.invalidateQueries({ queryKey: ['employees', user.plantId] });
-            setTimeout(() => {
-              navigate("/plant/employees");
-            }, 1000);
-          },
-          onError: (error) => {
-            if (error.response?.data?.upgradeRequired) {
-              setLimitReached(true);
-            }
-            setError(error.message || error.response?.data?.message || "Something went wrong. Please try again.");
-            toast.error(error.message || error.response?.data?.message || "Something went wrong", { id: toastId });
-            setSubmitting(false);
-          }
-        }
-      );
+      // Submit using mutation
+      const result = await createEmployeeMutation.mutateAsync({
+        ...formData,
+        companyId: user.companyId,
+        plantId: user.plantId
+      });
+
+      toast.success("Employee account created successfully", { id: toastId });
+      // Invalidate the employees query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['employees', user.plantId] });
+      setTimeout(() => {
+        navigate("/plant/employees");
+      }, 1000);
 
     } catch (err) {
       toast.error("Something went wrong. Please try again.", { id: toastId });

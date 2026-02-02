@@ -15,11 +15,11 @@ import {
   UserCheck,
   ShieldCheck,
   CreditCard,
-  ClipboardList
+  ClipboardList,
+  X
 } from "lucide-react";
 import SignaturePad from "../forms/ModernFormBuilder/components/SignaturePad";
 import { useAuth } from "../../context/AuthContext";
-import CompanyHeader from "../common/CompanyHeader";
 
 export default function FormRenderer({ 
   form, 
@@ -48,32 +48,40 @@ export default function FormRenderer({
   const isLoading = externalSubmitting !== undefined ? externalSubmitting : loading;
   
   const update = (id, value) => {
-    const fieldKey = id;
-    const newData = { ...data, [fieldKey]: value };
-    setData(newData);
-    if (onDataChange) onDataChange(newData);
-    if (errors[fieldKey]) setErrors({ ...errors, [fieldKey]: null });
+    setData(prev => ({ ...prev, [id]: value }));
+    if (onDataChange) onDataChange({ ...data, [id]: value });
   };
 
-  const handleFileChange = (fieldId, file) => {
-    if (file) {
-      setFiles({ ...files, [fieldId]: { file, fieldId } });
-      if (errors[fieldId]) setErrors({ ...errors, [fieldId]: null });
-    }
+  const addFile = (id, file) => {
+    setFiles(prev => ({ ...prev, [id]: file }));
+    update(id, file.url);
+  };
+
+  const removeFile = (id) => {
+    const newFiles = { ...files };
+    delete newFiles[id];
+    setFiles(newFiles);
+    update(id, "");
   };
 
   const validateAll = () => {
-    const newErrors = {};
+    let newErrors = {};
     let hasError = false;
 
-    // Validate fields from top level
-    fields.forEach(field => {
+    // Validate fields
+    [...fields, ...sections.flatMap(s => s.fields || [])].forEach(field => {
       const fieldId = field.fieldId || field.id;
-      if (field.required && !["section-header", "spacer", "description", "auto-date", "auto-user"].includes(field.type)) {
+      if (fieldId) {
         const val = data[fieldId];
-if (field.type === "file" || field.type === "image") {
-            if (!files[fieldId] && !val) {
+        if (field.required) {
+          if (field.type === "file") {
+            if (!val || !files[fieldId]) {
               newErrors[fieldId] = "This field is required";
+              hasError = true;
+            }
+          } else if (field.type === "signature") {
+            if (!val) {
+              newErrors[fieldId] = "Signature is required";
               hasError = true;
             }
           } else if (field.type === "daterange") {
@@ -86,43 +94,12 @@ if (field.type === "file" || field.type === "image") {
             hasError = true;
           }
         }
-      });
-
-      // Validate fields from sections
-      sections.forEach(section => {
-        section.fields?.forEach(field => {
-          const fieldId = field.fieldId || field.id;
-          if (field.required && !["section-header", "spacer", "description", "auto-date", "auto-user"].includes(field.type)) {
-            const val = data[fieldId];
-            if (field.type === "file" || field.type === "image") {
-              if (!files[fieldId] && !val) {
-                newErrors[fieldId] = "This field is required";
-                hasError = true;
-              }
-            } else if (field.type === "checklist") {
-              const items = field.items || [];
-              const responses = val || {};
-              if (Object.keys(responses).length < items.length) {
-                newErrors[fieldId] = "All checklist items must be completed";
-                hasError = true;
-              }
-            } else if (field.type === "daterange") {
-              if (!val || !val.start || !val.end) {
-                newErrors[fieldId] = "Both start and end dates are required";
-                hasError = true;
-              }
-            } else if (!val || (Array.isArray(val) && val.length === 0)) {
-            newErrors[fieldId] = "This field is required";
-            hasError = true;
-          }
-        }
-      });
+      }
     });
 
     setErrors(newErrors);
     return !hasError;
   };
-
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -158,464 +135,403 @@ if (field.type === "file" || field.type === "image") {
       right: "text-right"
     }[field.alignment || "left"];
 
-    const widthStyle = { width: field.width || "100%" };
-
-    const commonInput = `w-full px-4 py-3 rounded-xl border-2 transition-all outline-none ${error ? 'border-red-500 focus:ring-red-100' : 'border-slate-100 focus:border-indigo-500 focus:ring-indigo-100'}`;
-
-    const fieldKey = customKey || fieldId;
-
-    if (field.type === "section-header") {
-      return (
-        <div key={fieldKey} className={`py-6 border-b border-slate-100 mb-6 ${alignmentClass}`} style={widthStyle}>
-          <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">{field.label}</h3>
-          {field.description && <p className="text-sm text-slate-400 mt-2">{field.description}</p>}
-        </div>
-      );
-    }
-
-    if (field.type === "description") {
-      return (
-        <div key={fieldKey} className={`py-4 text-slate-500 leading-relaxed ${alignmentClass}`} style={widthStyle}>
-          {field.content}
-        </div>
-      );
-    }
-
-    if (field.type === "spacer") {
-      return <div key={fieldKey} style={{ ...widthStyle, height: field.height || "20px" }} />;
-    }
-
-    return (
-      <div key={fieldKey} style={widthStyle} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all">
-        <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center justify-between">
-          <span>
-            {field.label}
-            {field.required && <span className="text-red-500 ml-1">*</span>}
-          </span>
-        </label>
-
-        {field.type === "checklist" && (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm divide-y divide-slate-100 mt-2">
-            {field.items?.map((item, i) => (
-              <div key={item.id || i} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-slate-50/50 transition-colors gap-4">
-                <p className="flex-1 text-sm font-medium text-slate-700">{item.question}</p>
-                <div className="flex gap-2 shrink-0">
-                  {field.options?.map((opt, oi) => (
-                    <button 
-                      key={oi}
-                      type="button"
-                      disabled={readOnly}
-                      onClick={() => {
-                        const currentVal = val || {};
-                        update(fieldId, { ...currentVal, [item.id || `item-${i}`]: opt });
-                      }}
-                      className={`px-4 py-1.5 rounded-lg text-[10px] font-black border transition-all uppercase tracking-tighter ${val?.[item.id || `item-${i}`] === opt ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-400 hover:border-indigo-500'}`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+    switch (field.type) {
+      case "text":
+      case "email":
+      case "number":
+      case "phone":
+        return (
+          <div key={customKey} className={`mb-6 ${alignmentClass}`}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <input
+              type={field.type}
+              value={val || ""}
+              onChange={(e) => update(fieldId, e.target.value)}
+              placeholder={field.placeholder}
+              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all ${
+                error ? "border-red-500" : "border-gray-300"
+              }`}
+              disabled={readOnly}
+            />
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
-        )}
+        );
 
-        {field.type === "text" && (
-          <input type="text" disabled={readOnly} className={commonInput} value={val || ""} onChange={(e) => update(fieldId, e.target.value)} placeholder={field.placeholder} />
-        )}
-
-        {field.type === "number" && (
-          <input type="number" disabled={readOnly} className={commonInput} value={val || ""} onChange={(e) => update(fieldId, e.target.value)} placeholder={field.placeholder} />
-        )}
-
-        {field.type === "email" && (
-          <input type="email" disabled={readOnly} className={commonInput} value={val || ""} onChange={(e) => update(fieldId, e.target.value)} placeholder={field.placeholder} />
-        )}
-
-        {field.type === "phone" && (
-          <input type="tel" disabled={readOnly} className={commonInput} value={val || ""} onChange={(e) => update(fieldId, e.target.value)} placeholder={field.placeholder} />
-        )}
-
-{field.type === "date" && (
-            <input type="date" disabled={readOnly} className={commonInput} value={val || ""} onChange={(e) => update(fieldId, e.target.value)} />
-          )}
-
-          {field.type === "daterange" && (
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1">
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Start Date</label>
-                <input 
-                  type="date" 
-                  disabled={readOnly} 
-                  className={commonInput} 
-                  value={val?.start || ""} 
-                  onChange={(e) => update(fieldId, { ...val, start: e.target.value })} 
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs font-semibold text-slate-500 mb-1">End Date</label>
-                <input 
-                  type="date" 
-                  disabled={readOnly} 
-                  className={commonInput} 
-                  value={val?.end || ""} 
-                  onChange={(e) => update(fieldId, { ...val, end: e.target.value })} 
-                />
-              </div>
-            </div>
-          )}
-
-        {field.type === "dropdown" && (
-          <select disabled={readOnly} className={commonInput} value={val || ""} onChange={(e) => update(fieldId, e.target.value)}>
-            <option value="">{field.placeholder || "Select option"}</option>
-            {field.options?.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
-          </select>
-        )}
-
-        {field.type === "radio" && (
-          <div className="space-y-2">
-            {field.options?.map((opt, i) => (
-              <label key={i} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${val === opt ? 'border-indigo-500 bg-indigo-50' : 'border-slate-100 hover:bg-slate-50'}`}>
-                <input type="radio" disabled={readOnly} checked={val === opt} onChange={() => update(fieldId, opt)} className="w-4 h-4 text-indigo-600" />
-                <span className="font-medium text-slate-700">{opt}</span>
-              </label>
-            ))}
+      case "textarea":
+        return (
+          <div key={customKey} className={`mb-6 ${alignmentClass}`}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <textarea
+              value={val || ""}
+              onChange={(e) => update(fieldId, e.target.value)}
+              placeholder={field.placeholder}
+              rows={field.rows || 4}
+              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all ${
+                error ? "border-red-500" : "border-gray-300"
+              }`}
+              disabled={readOnly}
+            />
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
-        )}
+        );
 
-        {field.type === "checkbox" && (
-          <div className="space-y-2">
-            {field.options?.map((opt, i) => (
-              <label key={i} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${(val || []).includes(opt) ? 'border-indigo-500 bg-indigo-50' : 'border-slate-100 hover:bg-slate-50'}`}>
-                <input 
-                  type="checkbox" 
-                  disabled={readOnly} 
-                  checked={(val || []).includes(opt)} 
-                  onChange={(e) => {
-                    const arr = val || [];
-                    update(fieldId, e.target.checked ? [...arr, opt] : arr.filter(o => o !== opt));
-                  }} 
-                  className="w-4 h-4 text-indigo-600 rounded" 
-                />
-                <span className="font-medium text-slate-700">{opt}</span>
-              </label>
-            ))}
-          </div>
-        )}
-
-        {(field.type === "file" || field.type === "image") && (
-            <div className="space-y-3">
-              {!readOnly && (
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6 text-slate-400">
-                    {field.type === 'image' ? <CreditCard size={24} className="mb-2" /> : <Upload size={24} className="mb-2" />}
-                    <p className="text-sm">Click to upload {field.type}</p>
-                  </div>
-                  <input type="file" className="hidden" onChange={(e) => handleFileChange(fieldId, e.target.files[0])} />
+      case "radio":
+        return (
+          <div key={customKey} className={`mb-6 ${alignmentClass}`}>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <div className="space-y-2">
+              {field.options.map((option, idx) => (
+                <label key={idx} className="flex items-center">
+                  <input
+                    type="radio"
+                    name={fieldId}
+                    value={option}
+                    checked={val === option}
+                    onChange={(e) => update(fieldId, e.target.value)}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                    disabled={readOnly}
+                  />
+                  <span className="ml-3 text-gray-700">{option}</span>
                 </label>
-              )}
-              
-              {field.type === "image" && val && (
-                <div className="relative group">
-                  <img 
-                    src={val} 
-                    alt={field.label} 
-                    className="w-full max-h-64 object-contain rounded-2xl border-2 border-slate-100 bg-slate-50 p-2 shadow-inner" 
-                  />
-                  <a 
-                    href={val} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm p-2 rounded-lg text-indigo-600 opacity-0 group-hover:opacity-100 transition-all shadow-lg"
-                  >
-                    <FileText size={16} />
-                  </a>
-                </div>
-              )}
-
-              {field.type === "file" && val && (
-                <div className="flex items-center gap-3 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                  <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-indigo-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-indigo-700 truncate">
-                      {files[fieldId]?.file?.name || "Uploaded File"}
-                    </p>
-                    <p className="text-xs text-indigo-500">Click to download or preview</p>
-                  </div>
-                  <a 
-                    href={val} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    download
-                    className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
-                  >
-                    Download
-                  </a>
-                </div>
-              )}
-
-              {files[fieldId] && !val && (
-                <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
-                  <CheckCircle2 className="w-5 h-5 text-indigo-600" />
-                  <span className="text-sm font-medium text-indigo-700 truncate flex-1">
-                    {files[fieldId]?.file.name}
-                  </span>
-                </div>
-              )}
+              ))}
             </div>
-          )}
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+          </div>
+        );
 
-        {field.type === "signature" && (
-          <div className="space-y-2">
-            {val ? (
-              <div className="relative group">
-                <div className="w-full h-48 bg-slate-50 border-2 border-slate-100 rounded-2xl flex items-center justify-center overflow-hidden">
-                  <img 
-                    src={val} 
-                    alt="Signature" 
-                    className="max-w-full max-h-full object-contain p-4" 
+      case "checkbox":
+        return (
+          <div key={customKey} className={`mb-6 ${alignmentClass}`}>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <div className="space-y-2">
+              {field.options.map((option, idx) => (
+                <label key={idx} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={Array.isArray(val) ? val.includes(option) : false}
+                    onChange={(e) => {
+                      const current = Array.isArray(val) ? val : [];
+                      if (e.target.checked) {
+                        update(fieldId, [...current, option]);
+                      } else {
+                        update(fieldId, current.filter(v => v !== option));
+                      }
+                    }}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 rounded"
+                    disabled={readOnly}
                   />
+                  <span className="ml-3 text-gray-700">{option}</span>
+                </label>
+              ))}
+            </div>
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+          </div>
+        );
+
+      case "dropdown":
+      case "select":
+        return (
+          <div key={customKey} className={`mb-6 ${alignmentClass}`}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <select
+              value={val || ""}
+              onChange={(e) => update(fieldId, e.target.value)}
+              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all ${
+                error ? "border-red-500" : "border-gray-300"
+              }`}
+              disabled={readOnly}
+            >
+              <option value="">{field.placeholder || "Select an option"}</option>
+              {field.options.map((option, idx) => (
+                <option key={idx} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+          </div>
+        );
+
+      case "file":
+        return (
+          <div key={customKey} className={`mb-6 ${alignmentClass}`}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            {val ? (
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                <div className="flex items-center">
+                  <FileText className="w-5 h-5 text-gray-400 mr-2" />
+                  <span className="text-sm text-gray-600">{val.split("/").pop()}</span>
                 </div>
                 {!readOnly && (
-                  <button 
-                    type="button"
-                    onClick={() => update(fieldId, null)}
-                    className="absolute top-3 right-3 p-2 bg-white shadow-lg rounded-full text-slate-400 hover:text-rose-500 transition-colors"
-                    title="Clear signature to sign again"
+                  <button
+                    onClick={() => removeFile(fieldId)}
+                    className="text-red-500 hover:text-red-700"
                   >
-                    <RotateCcw size={14} />
+                    <X className="w-5 h-5" />
                   </button>
                 )}
               </div>
             ) : (
-              <SignaturePad 
-                value={val} 
-                onChange={(v) => update(fieldId, v)} 
-                readOnly={readOnly} 
-                label={field.label} 
-              />
-            )}
-            {val && (
-              <div className="flex items-center gap-2 text-[10px] font-bold text-green-600 uppercase tracking-widest px-1">
-                <CheckCircle2 size={12} />
-                Digitally Signed & Verified
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-400 transition-colors">
+                <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                <div className="flex text-sm text-gray-600 mt-4">
+                  <label className="relative cursor-pointer rounded-md font-medium text-indigo-600 hover:text-indigo-500">
+                    <span>Upload a file</span>
+                    <input
+                      type="file"
+                      className="sr-only"
+                      onChange={(e) => {
+                        if (e.target.files[0]) {
+                          addFile(fieldId, e.target.files[0]);
+                        }
+                      }}
+                      disabled={readOnly}
+                    />
+                  </label>
+                  <p className="pl-1">or drag and drop</p>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {field.maxFileSize ? `Max file size: ${field.maxFileSize}MB` : "PNG, JPG, PDF up to 10MB"}
+                </p>
               </div>
             )}
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
-        )}
+        );
 
-        {field.type === "terms" && (
-          <div className="flex gap-3 p-4 bg-indigo-50/30 border border-indigo-100 rounded-xl">
-            <input type="checkbox" disabled={readOnly} checked={!!val} onChange={(e) => update(fieldId, e.target.checked)} className="mt-1 w-4 h-4 text-indigo-600 rounded border-slate-300" />
-            <p className="text-[13px] text-slate-600 leading-snug break-words overflow-hidden">{field.content}</p>
+      case "signature":
+        return (
+          <div key={customKey} className={`mb-6 ${alignmentClass}`}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <SignaturePad
+              value={val}
+              onChange={(value) => update(fieldId, value)}
+              disabled={readOnly}
+            />
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
-        )}
+        );
 
-        {field.type === "auto-date" && (
-          <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
-            <div className="flex items-center gap-2 text-slate-400">
-              <Clock size={14} />
-              <span className="text-[11px] font-bold uppercase tracking-wider">Submission Date</span>
-            </div>
-            <span className="text-xs font-mono text-slate-600">{new Date().toLocaleDateString()}</span>
+      case "date":
+        return (
+          <div key={customKey} className={`mb-6 ${alignmentClass}`}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <input
+              type="date"
+              value={val || ""}
+              onChange={(e) => update(fieldId, e.target.value)}
+              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all ${
+                error ? "border-red-500" : "border-gray-300"
+              }`}
+              disabled={readOnly}
+            />
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
-        )}
+        );
 
-        {field.type === "auto-user" && (
-          <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
-            <div className="flex items-center gap-2 text-slate-400">
-              <UserCheck size={14} />
-              <span className="text-[11px] font-bold uppercase tracking-wider">User Verified</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="text-xs font-bold text-slate-600">{user?.name}</span>
-              <span className="text-[9px] px-2 py-0.5 bg-white border border-slate-200 rounded text-slate-400 uppercase">{user?.role}</span>
-            </div>
+      case "datetime":
+        return (
+          <div key={customKey} className={`mb-6 ${alignmentClass}`}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <input
+              type="datetime-local"
+              value={val || ""}
+              onChange={(e) => update(fieldId, e.target.value)}
+              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all ${
+                error ? "border-red-500" : "border-gray-300"
+              }`}
+              disabled={readOnly}
+            />
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
-        )}
+        );
 
-          {field.type === "grid-table" && (
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-              <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200">
-                <div className={(field.columns?.length || 0) > 6 ? "min-w-[800px]" : "w-full"}>
-                  <table className="w-full text-sm border-collapse">
-                    <thead className="bg-slate-50 border-b border-slate-200">
-                      <tr>
-                        {field.columns?.map(col => (
-                          <th 
-                            key={col.id} 
-                            style={{ minWidth: col.width || '120px' }} 
-                            className="px-4 py-3 text-left font-black text-slate-500 uppercase tracking-widest text-[10px] border-r last:border-0 border-slate-200/50"
-                          >
-                            {col.label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white">
-                      {(val || Array(field.rows || 1).fill({})).map((row, ri) => (
-                        <tr key={ri} className="border-b border-slate-100 last:border-0">
-                          {field.columns?.map(col => (
-                            <td key={col.id} className="px-2 py-2 border-r last:border-0 border-slate-100">
-                              <input
-                                type="text"
-                                disabled={readOnly}
-                                className="w-full px-2 py-1.5 border border-transparent focus:border-indigo-500 focus:bg-indigo-50/30 outline-none rounded-lg transition-all"
-                                value={row[col.id] || ""}
-                                onChange={(e) => {
-                                  const newTable = [...(val || Array(field.rows || 1).fill({}))];
-                                  newTable[ri] = { ...newTable[ri], [col.id]: e.target.value };
-                                  update(fieldId, newTable);
-                                }}
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+      case "daterange":
+        return (
+          <div key={customKey} className={`mb-6 ${alignmentClass}`}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={val?.start || ""}
+                  onChange={(e) => update(fieldId, { ...val, start: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 ${
+                    error ? "border-red-500" : "border-gray-300"
+                  }`}
+                  disabled={readOnly}
+                />
               </div>
-              
-              {(field.columns?.length || 0) > 6 && (
-                <div className="px-4 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center gap-2">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Scroll horizontally to see all columns</span>
-                </div>
-              )}
-
-              {field.repeatable && !readOnly && (
-                <button 
-                  type="button"
-                  onClick={() => {
-                    const newTable = [...(val || Array(field.rows || 1).fill({}))];
-                    newTable.push({});
-                    update(fieldId, newTable);
-                  }}
-                  className="w-full py-2.5 bg-slate-50/50 text-[10px] font-black text-slate-400 hover:text-indigo-600 hover:bg-white transition-all border-t border-slate-200 uppercase tracking-widest"
-                >
-                  + ADD NEW ROW
-                </button>
-              )}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={val?.end || ""}
+                  onChange={(e) => update(fieldId, { ...val, end: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 ${
+                    error ? "border-red-500" : "border-gray-300"
+                  }`}
+                  disabled={readOnly}
+                />
+              </div>
             </div>
-          )}
-
-        {error && (
-          <div className="mt-2 flex items-center gap-1.5 text-red-600 text-xs font-semibold">
-            <AlertCircle size={14} />
-            <span>{error}</span>
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
-        )}
+        );
+
+      case "section-header":
+        return (
+          <div key={customKey} className="mb-8">
+            <h2 className="text-xl font-bold text-gray-900 border-b pb-2">
+              {field.description}
+            </h2>
+          </div>
+        );
+
+      case "section-divider":
+        return (
+          <div key={customKey} className="my-8 border-t border-gray-200"></div>
+        );
+
+      case "spacer":
+        return (
+          <div key={customKey} style={{ height: field.height || "20px" }}></div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  if (!form && !externalFields) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <FileText className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No form data</h3>
+          <p className="mt-1 text-sm text-gray-500">The form could not be loaded.</p>
+        </div>
       </div>
     );
-  };
+  }
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-6">
-      {/* Default Company Header */}
-      <CompanyHeader />
-
-      {/* Form Title Section */}
-      <div className="mb-10 text-center md:text-left">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 rounded-full mb-3">
-          <ClipboardList size={14} className="text-indigo-600" />
-          <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Form Template</span>
-        </div>
-        <h1 className="text-4xl font-black text-slate-800 uppercase tracking-tight leading-none">
-          {form?.title || form?.name || 'Untitled Form'}
-        </h1>
-        {form?.description && (
-          <p className="mt-3 text-slate-500 font-medium max-w-2xl">
-            {form.description}
-          </p>
-        )}
-      </div>
-
-      {/* Workflow Info Section */}
+      {/* Approval Workflow Display */}
       {form?.approvalFlow && form.approvalFlow.length > 0 && (
-        <div className="mb-10 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">
-          <div className="bg-slate-50/50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-indigo-600" />
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Approval Workflow</span>
+        <div className="mb-10 bg-slate-50 rounded-3xl p-8 border border-slate-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-100 shadow-sm">
+              <ShieldCheck className="w-5 h-5 text-indigo-600" />
             </div>
-            <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-100">
-              {form.approvalFlow.length} LEVELS
-            </span>
+            <div>
+              <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Approval Workflow</h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                {form.approvalFlow.length} LEVEL{form.approvalFlow.length > 1 ? 'S' : ''}
+              </p>
+            </div>
           </div>
-          <div className="p-6">
-            <div className="flex flex-wrap gap-4">
-              {form.approvalFlow.map((level, idx) => (
-                <div key={idx} className="flex items-center gap-3">
-                  <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-black shadow-sm">
-                      {idx + 1}
-                    </div>
+          
+          <div className="flex flex-wrap items-center gap-4">
+            {form.approvalFlow.map((level, idx) => (
+              <div key={idx} className="flex items-center gap-4">
+                <div className="flex items-center gap-3 bg-white pl-2 pr-5 py-2 rounded-2xl border border-slate-100 shadow-sm">
+                  <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-[10px] font-black">
+                    {idx + 1}
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter leading-none mb-1">{level.name}</span>
-                    <span className="text-sm font-bold text-slate-700 leading-none">
-                      {level.approverId?.name || level.approverId?.email || "Pending Assignment"}
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter leading-none mb-1">
+                      {level.name || `Approval Level ${idx + 1}`}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-700">
+                      {level.approverId?.name || "Unassigned"}
                     </span>
                   </div>
-                  {idx !== form.approvalFlow.length - 1 && (
-                    <ChevronRight className="w-4 h-4 text-slate-200 ml-2" />
-                  )}
                 </div>
-              ))}
-            </div>
+                {idx < form.approvalFlow.length - 1 && (
+                  <ChevronRight className="w-4 h-4 text-slate-300" />
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      <div className="space-y-12">
-        {/* Render Sections if they exist */}
+      {/* Form Fields */}
+      <form onSubmit={handleSubmit} className="space-y-8">
         {sections.length > 0 ? (
-          sections.map((section, sidx) => (
-            <div key={section.sectionId || sidx} className="space-y-6">
-              <div className="border-l-4 border-indigo-600 pl-4 py-2 bg-slate-50/50 rounded-r-xl">
-                <h2 className="text-xl font-black text-slate-800 tracking-tight">{section.title}</h2>
-                {section.description && <p className="text-sm text-slate-500 mt-1">{section.description}</p>}
-              </div>
+          sections.map((section, sectionIndex) => (
+            <div key={section.sectionId || sectionIndex}>
+              {section.title && (
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 border-l-4 border-indigo-500 pl-4">
+                  {section.title}
+                </h2>
+              )}
               <div className="space-y-6">
-                {(section.fields || []).map((field, fidx) => renderField(field, field.fieldId || `field-${sidx}-${fidx}`))}
+                {section.fields?.map((field, fieldIndex) => 
+                  renderField(field, field.id || `section-${sectionIndex}-field-${fieldIndex}`)
+                )}
               </div>
             </div>
           ))
         ) : (
-          /* Fallback to flat fields */
           <div className="space-y-6">
-            {fields.map((field, index) => {
-              if (field.type === "columns-2" || field.type === "columns-3") {
-                const cols = field.type === "columns-2" ? 2 : 3;
-                return (
-                  <div key={field.id || `field-${index}`} className={`grid grid-cols-1 md:grid-cols-${cols} gap-6`}>
-                    {field.children?.map((colFields, ci) => (
-                      <div key={ci} className="space-y-6">
-                        {colFields.map((f, fi) => renderField(f, f.id || `col-${ci}-${fi}`))}
-                      </div>
-                    ))}
-                  </div>
-                );
-              }
-              return renderField(field, field.id || `field-${index}`);
-            })}
+            {fields.map((field, index) => renderField(field, field.id || `field-${index}`))}
           </div>
         )}
-      </div>
 
-      {!readOnly && (
-        <div className="mt-12 flex justify-end gap-4">
-          <button 
-            onClick={handleSubmit}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-10 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-black hover:opacity-90 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50"
-          >
-            {isLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Send size={18} /> SUBMIT FORM</>}
-          </button>
-        </div>
-      )}
+        {!readOnly && (
+          <div className="mt-12 flex justify-end gap-4">
+            <button 
+              type="button"
+              onClick={() => {
+                setData(initialData);
+                setFiles({});
+                setErrors({});
+              }}
+              className="flex items-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 rounded-2xl hover:bg-gray-50 transition-all"
+            >
+              <RotateCcw size={18} />
+              Reset
+            </button>
+            <button 
+              type="submit"
+              disabled={isLoading}
+              className="flex items-center gap-2 px-10 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-black hover:opacity-90 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50"
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Send size={18} />
+                  SUBMIT FORM
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </form>
     </div>
   );
 }

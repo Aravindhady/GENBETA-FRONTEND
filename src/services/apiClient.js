@@ -21,7 +21,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // 30 seconds
+  timeout: 90000, // Increased to 90 seconds to handle email sending latency
 });
 
 // Request interceptor - Add auth token
