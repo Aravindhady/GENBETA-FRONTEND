@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import { submissionApi } from "../../api/submission.api";
+import api from "../../api/api";
 import { 
   Save, 
   Send, 
@@ -37,6 +39,97 @@ export default function FormRenderer({
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // Helper function to find field value in data when direct matching fails
+  const findFieldValue = (data, field) => {
+    if (!data || typeof data !== 'object') return undefined;
+    
+    // Look for the field by various possible identifiers
+    const possibleKeys = [
+      field.fieldId,
+      field.id,
+      field.label?.toLowerCase().replace(/\s+/g, '_'),
+      field.label?.toLowerCase().replace(/[^a-zA-Z0-9]/g, ''),
+      field.label,
+      field.name,
+      field.label?.toLowerCase().replace(/\s+/g, '-')
+    ];
+    
+    // Remove duplicates and null/undefined values
+    const uniqueKeys = [...new Set(possibleKeys.filter(Boolean))];
+    
+    // First, try direct matching
+    for (const key of uniqueKeys) {
+      if (data.hasOwnProperty(key)) {
+        return data[key];
+      }
+    }
+    
+    // If not found, try partial matching or look for signature-like values
+    if (field.type === 'signature') {
+      // Look for signature values in the data
+      for (const [key, value] of Object.entries(data)) {
+        if (typeof value === 'string' && 
+            (value.includes('cloudinary') || value.includes('signature') || value.includes('.png') || value.includes('data:image'))) {
+          return value;
+        }
+        // Also check if value is an object that might contain signature data
+        if (typeof value === 'object' && value !== null) {
+          const objValues = Object.values(value);
+          for (const objValue of objValues) {
+            if (typeof objValue === 'string' &&
+                (objValue.includes('cloudinary') || objValue.includes('signature') || objValue.includes('.png') || objValue.includes('data:image'))) {
+              return objValue;
+            }
+          }
+        }
+      }
+      
+      // Check if any value in the data object is a string that looks like a signature URL
+      const allValues = getAllObjectValues(data);
+      for (const value of allValues) {
+        if (typeof value === 'string' &&
+            (value.includes('cloudinary') || value.includes('signature') || value.includes('.png') || value.includes('data:image'))) {
+          return value;
+        }
+      }
+    }
+    
+    return undefined;
+  };
+  
+  // Helper function to recursively get all values from an object
+  const getAllObjectValues = (obj) => {
+    const values = [];
+    
+    const extractValues = (current) => {
+      if (typeof current === 'object' && current !== null && !Array.isArray(current)) {
+        for (const key in current) {
+          if (current.hasOwnProperty(key)) {
+            const value = current[key];
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+              extractValues(value);
+            } else {
+              values.push(value);
+            }
+          }
+        }
+      } else if (Array.isArray(current)) {
+        current.forEach(item => {
+          if (typeof item === 'object' && item !== null) {
+            extractValues(item);
+          } else {
+            values.push(item);
+          }
+        });
+      } else {
+        values.push(current);
+      }
+    };
+    
+    extractValues(obj);
+    return values;
+  };
+
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       setData(initialData);
@@ -52,9 +145,33 @@ export default function FormRenderer({
     if (onDataChange) onDataChange({ ...data, [id]: value });
   };
 
-  const addFile = (id, file) => {
-    setFiles(prev => ({ ...prev, [id]: file }));
-    update(id, file.url);
+  const addFile = async (id, file) => {
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const base64 = e.target.result;
+          
+          // Upload to Cloudinary
+          const uploadResponse = await api.post('/api/upload/image', {
+            base64,
+            folder: 'submissions'
+          });
+          
+          // Store the Cloudinary URL
+          setFiles(prev => ({ ...prev, [id]: { ...file, url: uploadResponse.data.url } }));
+          update(id, uploadResponse.data.url);
+        } catch (error) {
+          console.error('Upload error:', error);
+          toast.error('Failed to upload file');
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('File processing error:', error);
+      toast.error('Failed to process file');
+    }
   };
 
   const removeFile = (id) => {
@@ -74,7 +191,7 @@ export default function FormRenderer({
       if (fieldId) {
         const val = data[fieldId];
         if (field.required) {
-          if (field.type === "file") {
+          if (field.type === "file" || field.type === "image") {
             if (!val || !files[fieldId]) {
               newErrors[fieldId] = "This field is required";
               hasError = true;
@@ -112,8 +229,7 @@ export default function FormRenderer({
 
     setLoading(true);
     try {
-      const fileArray = Object.values(files);
-      const response = await submissionApi.createSubmission(form._id, data, fileArray, "PENDING_APPROVAL");
+      const response = await submissionApi.createSubmission(form._id, data, "PENDING_APPROVAL");
       if (response.success) {
         navigate("/employee/submissions");
       }
@@ -127,7 +243,36 @@ export default function FormRenderer({
   const renderField = (field, customKey) => {
     const fieldId = field.fieldId || field.id;
     const error = errors[fieldId];
-    const val = data[fieldId];
+    // Try multiple possible keys to handle potential field ID mismatches
+    const rawValue = data[fieldId] || 
+              data[field.id] || 
+              data[field.fieldId] || 
+              data[field.label?.toLowerCase().replace(/\s+/g, '_')] || 
+              data[field.name] ||
+              // Additional fallbacks for potential field mapping issues
+              findFieldValue(data, field);
+    
+    // Debug logging for signature fields
+    if (field.type === 'signature') {
+      console.log(`Signature field: ${field.label || fieldId}, rawValue:`, rawValue, 'from data:', data);
+    }
+    
+    // Process rawValue to handle stringified objects
+    let processedValue = rawValue;
+    if (typeof rawValue === 'string' && rawValue.startsWith('{') && rawValue.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(rawValue);
+        // If it's a valid object, try to extract signature URL from it
+        if (typeof parsed === 'object' && parsed !== null) {
+          processedValue = parsed.url || parsed.secure_url || parsed.data || rawValue;
+        }
+      } catch (e) {
+        // If parsing fails, keep the original value
+        processedValue = rawValue;
+      }
+    }
+    
+    const val = readOnly ? (processedValue ?? '—') : (processedValue ?? '');
     
     const alignmentClass = {
       left: "text-left",
@@ -263,24 +408,46 @@ export default function FormRenderer({
         );
 
       case "file":
+      case "image":
         return (
           <div key={customKey} className={`mb-6 ${alignmentClass}`}>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {field.label} {field.required && <span className="text-red-500">*</span>}
             </label>
             {val ? (
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                <div className="flex items-center">
-                  <FileText className="w-5 h-5 text-gray-400 mr-2" />
-                  <span className="text-sm text-gray-600">{val.split("/").pop()}</span>
+              <div className="space-y-2">
+                <div className="p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      {(field.type === "image") ? (
+                        <FileText className="w-5 h-5 text-gray-400 mr-2" />
+                      ) : (
+                        <FileText className="w-5 h-5 text-gray-400 mr-2" />
+                      )}
+                      <span className="text-sm text-gray-600 truncate max-w-xs">{val.split("/").pop()}</span>
+                    </div>
+                    {!readOnly && (
+                      <button
+                        onClick={() => removeFile(fieldId)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {!readOnly && (
-                  <button
-                    onClick={() => removeFile(fieldId)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                {readOnly && (
+                  <div className="text-xs text-blue-600 break-all bg-blue-50 p-2 rounded border">
+                    <span className="font-medium">File URL:</span> 
+                    <a 
+                      href={val} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="underline hover:text-blue-800 break-all"
+                    >
+                      {val}
+                    </a>
+                  </div>
                 )}
               </div>
             ) : (
@@ -288,9 +455,10 @@ export default function FormRenderer({
                 <Upload className="mx-auto h-12 w-12 text-gray-400" />
                 <div className="flex text-sm text-gray-600 mt-4">
                   <label className="relative cursor-pointer rounded-md font-medium text-indigo-600 hover:text-indigo-500">
-                    <span>Upload a file</span>
+                    <span>Upload {field.type === "image" ? "an image" : "a file"}</span>
                     <input
                       type="file"
+                      accept={field.type === "image" ? "image/*" : "*/*"}
                       className="sr-only"
                       onChange={(e) => {
                         if (e.target.files[0]) {
@@ -303,7 +471,7 @@ export default function FormRenderer({
                   <p className="pl-1">or drag and drop</p>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  {field.maxFileSize ? `Max file size: ${field.maxFileSize}MB` : "PNG, JPG, PDF up to 10MB"}
+                  {field.maxFileSize ? `Max file size: ${field.maxFileSize}MB` : (field.type === "image" ? "JPG, PNG, GIF up to 10MB" : "PNG, JPG, PDF up to 10MB")}
                 </p>
               </div>
             )}
@@ -317,11 +485,42 @@ export default function FormRenderer({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {field.label} {field.required && <span className="text-red-500">*</span>}
             </label>
-            <SignaturePad
-              value={val}
-              onChange={(value) => update(fieldId, value)}
-              disabled={readOnly}
-            />
+            {readOnly && val ? (
+              <div className="space-y-2">
+                <div className="p-4 bg-gray-50 rounded-lg border min-h-[150px] flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="text-gray-500 mb-2">Signature Image Preview</div>
+                    <img 
+                      src={val} 
+                      alt="Signature" 
+                      className="max-h-24 max-w-xs border border-gray-200 rounded"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                    <div className="hidden text-gray-500">Unable to load signature image</div>
+                  </div>
+                </div>
+                <div className="text-xs text-blue-600 break-all bg-blue-50 p-2 rounded border">
+                  <span className="font-medium">Signature URL:</span> 
+                  <a 
+                    href={val} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="underline hover:text-blue-800 break-all"
+                  >
+                    {val}
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <SignaturePad
+                value={val}
+                onChange={(value) => update(fieldId, value)}
+                disabled={readOnly}
+              />
+            )}
             {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
         );

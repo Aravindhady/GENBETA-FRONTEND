@@ -111,12 +111,24 @@ export default function PlantList() {
                   <tr key={plant._id} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-50 rounded-lg group-hover:bg-indigo-100 transition-colors">
-                          <Building2 className="w-5 h-5 text-indigo-600" />
-                        </div>
+                        {plant.company?.logoUrl ? (
+                          <img 
+                            src={plant.company.logoUrl} 
+                            alt={`${plant.company.name} logo`} 
+                            className="w-10 h-10 rounded-lg object-contain bg-gray-100 p-1"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(plant.company.name || 'Company')}&background=0D8ABC&color=fff`;
+                            }}
+                          />
+                        ) : (
+                          <div className="p-2 bg-indigo-50 rounded-lg group-hover:bg-indigo-100 transition-colors">
+                            <Building2 className="w-5 h-5 text-indigo-600" />
+                          </div>
+                        )}
                         <div>
                           <div className="text-sm font-bold text-gray-900">{plant.name}</div>
-                          <div className="text-xs text-gray-500">Manufacturing Unit</div>
+                          <div className="text-xs text-gray-500">{plant.company?.name || 'Company'}</div>
                         </div>
                       </div>
                     </td>

@@ -3,9 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { formApi } from "../../api/form.api";
 import { submissionApi } from "../../api/submission.api";
+import { SkeletonTable } from "../../components/common/Skeleton";
 import { 
   Plus, 
-  Loader2,
   FileText,
   Search,
   CheckCircle2,
@@ -86,10 +86,21 @@ export default function EmployeeTemplates() {
     (t.numericalId ? `F-${t.numericalId.toString().padStart(3, '0')}` : (t.formId || t._id || "")).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleRowClick = (templateId) => {
+    navigate(`/employee/fill-template/${templateId}`);
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="h-8 bg-gray-200 rounded w-32 mb-2 animate-pulse" />
+            <div className="h-4 bg-gray-100 rounded w-64 animate-pulse" />
+          </div>
+          <div className="h-10 bg-gray-100 rounded-xl w-64 animate-pulse" />
+        </div>
+        <SkeletonTable rows={5} columns={5} className="bg-white rounded-2xl border border-gray-100 shadow-sm" />
       </div>
     );
   }
@@ -129,15 +140,14 @@ export default function EmployeeTemplates() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Form Name</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Form ID</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Approval Levels</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Created At</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Action</th>
-                    </tr>
-                  </thead>
+                <tr>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Form Name</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Form ID</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Approval Levels</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Created At</th>
+                </tr>
+              </thead>
                   <tbody className="divide-y divide-gray-100">
                       {filteredTemplates.map((template) => {
                         const formStatus = getFormStatus(template._id);
@@ -179,7 +189,11 @@ export default function EmployeeTemplates() {
                         const StatusIcon = currentStatus.icon;
                         
                         return (
-                          <tr key={template._id} className="hover:bg-gray-50 transition-colors">
+                          <tr 
+                            key={template._id} 
+                            className="hover:bg-gray-50 transition-colors cursor-pointer"
+                            onClick={() => handleRowClick(template._id)}
+                          >
                             <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
                               {template.formName}
                               {formStatus.submissions.length > 1 && (
@@ -215,19 +229,6 @@ export default function EmployeeTemplates() {
                                 hour: '2-digit',
                                 minute: '2-digit'
                               }) : "—"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right">
-                              <button
-                                onClick={() => navigate(`/employee/fill-template/${template._id}`)}
-                                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm ${
-                                  filled 
-                                    ? 'bg-amber-600 text-white hover:bg-amber-700' 
-                                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                }`}
-                              >
-                                <Plus className="w-4 h-4" />
-                                {filled ? 'Re-fill' : 'Fill Form'}
-                              </button>
                             </td>
                           </tr>
                         );

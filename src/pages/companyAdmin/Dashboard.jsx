@@ -167,7 +167,7 @@ export default function CompanyAdminDashboard() {
       title: "Total Plants", 
       value: stats.totalPlants, 
       icon: <Factory className="w-7 h-7" />, 
-      color: "blue",
+      color: "emerald",
       subtitle: "Active facilities"
     },
     { 
@@ -369,7 +369,7 @@ export default function CompanyAdminDashboard() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <Factory className="w-3.5 h-3.5 text-indigo-400" />
+                        <Factory className="w-3.5 h-3.5 text-emerald-400" />
                         <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">{s.plantId?.name || "Global Unit"}</span>
                       </div>
                     </td>
@@ -404,12 +404,13 @@ export default function CompanyAdminDashboard() {
             </table>
           </div>
         </div>
-
+      
         <div>
           <BarChart 
             title="Unit Distribution" 
             data={chartData.plantDistribution} 
             yLabel="Load"
+            color="emerald"
           />
         </div>
       </div>
@@ -426,10 +427,10 @@ export default function CompanyAdminDashboard() {
         {subscription?.plantUsage?.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {subscription.plantUsage.map((plant) => (
-              <div key={plant.plantId} className="p-5 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-indigo-200 hover:bg-white transition-all group shadow-sm hover:shadow-xl hover:shadow-indigo-50/50">
+              <div key={plant.plantId} className="p-5 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-emerald-200 hover:bg-white transition-all group shadow-sm hover:shadow-xl hover:shadow-emerald-50/50">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="font-black text-gray-900 uppercase tracking-tighter text-lg">{plant.plantName}</h3>
-                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm border border-gray-50 group-hover:scale-110 transition-transform">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-emerald-600 shadow-sm border border-gray-50 group-hover:scale-110 transition-transform">
                     <Factory className="w-5 h-5" />
                   </div>
                 </div>
@@ -438,11 +439,11 @@ export default function CompanyAdminDashboard() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-[10px] font-black text-gray-400 uppercase tracking-[0.15em]">
                       <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Forms Pool</span>
-                      <span className="text-indigo-600">{plant.forms} <span className="text-gray-300">/ {plant.formsLimit}</span></span>
+                      <span className="text-emerald-600">{plant.forms} <span className="text-gray-300">/ {plant.formsLimit}</span></span>
                     </div>
                     <div className="w-full bg-gray-200/50 rounded-full h-1.5 overflow-hidden">
                       <div 
-                        className="bg-indigo-600 rounded-full h-full transition-all duration-1000 shadow-[0_0_10px_rgba(79,70,229,0.3)]" 
+                        className="bg-emerald-600 rounded-full h-full transition-all duration-1000 shadow-[0_0_10px_rgba(16,185,129,0.3)]" 
                         style={{ width: `${getUsagePercentage(plant.forms, plant.formsLimit)}%` }}
                       />
                     </div>
@@ -462,7 +463,7 @@ export default function CompanyAdminDashboard() {
                   </div>
                 </div>
                 
-                <Link to={`/company/plants/${plant.plantId}`} className="mt-6 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 pt-4 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Link to={`/company/plants/${plant.plantId}`} className="mt-6 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 pt-4 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
                   Unit Insights <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>

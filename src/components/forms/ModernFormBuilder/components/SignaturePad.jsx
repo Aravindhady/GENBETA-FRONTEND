@@ -9,7 +9,50 @@ export default function SignaturePad({ value, onChange, readOnly, label }) {
   const [uploading, setUploading] = useState(false);
   const onChangeRef = useRef(onChange);
 
-  const displayValue = typeof value === 'object' ? value?.url : value;
+  // Handle various possible formats of signature data
+  // Check if value is an object and try to extract URL from common properties
+  let displayValue = '';
+  
+  console.log('SignaturePad value prop:', value, 'Type:', typeof value, 'ReadOnly:', readOnly);
+  
+  if (value) {
+    if (typeof value === 'string') {
+      displayValue = value.trim();
+    } else if (typeof value === 'object') {
+      // Try different possible property names for the URL
+      displayValue = value.url || value.secure_url || value.data || value.value || 
+                   value.link || value.image || value.signature || '';
+      // If displayValue is still an object, try to extract from it
+      if (typeof displayValue === 'object' && displayValue !== null) {
+        displayValue = displayValue.url || displayValue.secure_url || displayValue.data || '';
+      }
+    }
+  }
+  
+  // Additional handling for potential nested structures
+  if (displayValue && typeof displayValue === 'object' && displayValue !== null) {
+    displayValue = displayValue.url || displayValue.secure_url || displayValue.data || '';
+  } else if (typeof displayValue === 'string' && displayValue.startsWith('{')) {
+    // Handle case where value is a stringified object
+    try {
+      const parsed = JSON.parse(displayValue);
+      displayValue = parsed.url || parsed.secure_url || parsed.data || '';
+    } catch (e) {
+      console.warn('Could not parse signature value as JSON:', e);
+    }
+  }
+  
+  console.log('SignaturePad final displayValue:', displayValue, 'For readOnly:', readOnly, 'Full value:', value);
+  
+  // If in read-only mode and we have a display value, check if it looks like a valid URL
+  if (readOnly && displayValue) {
+    const isValidUrl = displayValue.startsWith('http') || displayValue.startsWith('data:image');
+    if (!isValidUrl) {
+      console.warn('Potential invalid signature URL:', displayValue);
+    } else {
+      console.log('Valid-looking signature URL:', displayValue);
+    }
+  }
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -66,7 +109,25 @@ export default function SignaturePad({ value, onChange, readOnly, label }) {
         ${readOnly ? "border-slate-100 bg-slate-50/50" : "border-slate-200 focus-within:border-indigo-500 hover:border-slate-300"}
       `}>
         {readOnly && displayValue ? (
-          <img src={displayValue} alt="Signature" className="w-full h-full object-contain p-4" />
+          <div className="w-full h-full flex items-center justify-center p-4">
+            <img 
+              src={displayValue} 
+              alt="Signature" 
+              className="max-h-full max-w-full object-contain"
+              onError={(e) => {
+                console.error('Error loading signature image:', displayValue);
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'block';
+              }}
+            />
+            <div className="hidden absolute inset-0 flex items-center justify-center bg-gray-50 text-gray-400 text-sm">
+              Could not load signature
+            </div>
+          </div>
+        ) : readOnly ? (
+          <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-400 text-sm">
+            No signature
+          </div>
         ) : (
           <>
             <canvas

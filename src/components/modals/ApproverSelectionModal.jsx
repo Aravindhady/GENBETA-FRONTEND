@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import api from "../../api/api";
+import { useAuth } from "../../context/AuthContext";
+import { userApi } from "../../api/user.api";
 
 export default function ApproverSelectionModal({ isOpen, onClose, onConfirm, selectedForms = [] }) {
+  const { user } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
@@ -17,12 +19,14 @@ export default function ApproverSelectionModal({ isOpen, onClose, onConfirm, sel
   const fetchEmployees = async () => {
     try {
       setLoading(true);
-      const userStr = localStorage.getItem("user");
-      const user = userStr ? JSON.parse(userStr) : null;
       
       if (user?.plantId) {
-        const response = await api.get(`/users/plant/${user.plantId}/employees`);
-        setEmployees(response.data.data || []);
+        const response = await userApi.getPlantEmployees(user.plantId);
+        if (response.success) {
+          setEmployees(response.data);
+        } else {
+          setEmployees([]);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch employees:", error);

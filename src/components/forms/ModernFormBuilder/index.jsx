@@ -336,9 +336,23 @@ export default function ModernFormBuilder({ formId }) {
         }
 
         if (!silent) {
-          toast.success(isPublish ? "Template published successfully!" : "Template draft saved successfully!");
+          // Check if workflow was assigned/updated
+          const hasWorkflow = workflow && workflow.length > 0;
+          const isNewForm = isNew;
+          
           if (isPublish) {
+            if (hasWorkflow) {
+              toast.success("Template published successfully! Emails sent to approvers.");
+            } else {
+              toast.success("Template published successfully!");
+            }
             setTimeout(() => navigate("/plant/forms"), 1500);
+          } else {
+            if (hasWorkflow && !isNewForm) {
+              toast.success("Template draft saved successfully! Emails sent to approvers for workflow assignment.");
+            } else {
+              toast.success("Template draft saved successfully!");
+            }
           }
         }
       }

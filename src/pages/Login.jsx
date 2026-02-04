@@ -88,23 +88,22 @@ export default function Login() {
             <div className="p-3 bg-white/10 rounded-xl">
               <ShieldCheck className="w-8 h-8" />
             </div>
-            <h1 className="text-3xl font-bold">FormFlow AI</h1>
+            <h1 className="text-3xl font-bold">GenBeta</h1>
           </div>
 
           <div>
             <h2 className="text-5xl font-extrabold leading-tight mb-6">
-              Smarter <br />
-              Approval Workflows
+              Facility <br />
+              Management
             </h2>
             <p className="text-lg text-indigo-100 max-w-lg mb-10">
-              Centralized multi-plant form management with real-time approvals.
+              Centralized management with real-time approvals.
             </p>
 
             <div className="space-y-4">
               {[
                 { icon: Zap, text: "Instant Approval Automation" },
-                { icon: Globe, text: "Multi-Company & Plant Support" },
-                { icon: Database, text: "Secure Compliance Data" },
+                { icon: Database, text: "Secure Compliance" },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-3">
                   <item.icon className="w-5 h-5 text-indigo-200" />
@@ -133,13 +132,13 @@ export default function Login() {
             <div className="p-3 bg-indigo-600 rounded-xl mb-3">
               <ShieldCheck className="w-6 h-6 text-white" />
             </div>
-            <h2 className="text-2xl font-bold">FormFlow AI</h2>
+            <h2 className="text-2xl font-bold">GenBeta</h2>
           </div>
 
           <div className="mb-8 text-center lg:text-left">
             <h3 className="text-3xl font-extrabold text-gray-900">Sign In</h3>
             <p className="text-gray-500 mt-1">
-              Super Admin • Company Admin • Plant Admin • Employee
+
             </p>
           </div>
 

@@ -37,7 +37,6 @@ export default function RightPanel({ selectedField, updateField, deleteField }) 
 
     const tabs = [
       { id: "settings", label: "Settings", icon: Settings },
-      { id: "validation", label: "Validation", icon: CheckCircle2 },
     ];
 
   const renderBasicSettings = () => (
@@ -455,23 +454,7 @@ export default function RightPanel({ selectedField, updateField, deleteField }) 
             </motion.div>
           )}
 
-          {activeTab === "validation" && (
-            <motion.div 
-              key="validation"
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center py-12 text-center"
-            >
-              <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 mb-4">
-                <CheckCircle2 size={24} />
-              </div>
-              <h4 className="text-xs font-bold text-gray-900 mb-1">Validation Rules</h4>
-              <p className="text-[10px] text-gray-400 px-4 leading-relaxed">Add constraints like character limits, patterns, or numeric ranges.</p>
-              <button className="mt-4 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] font-bold hover:bg-indigo-600 transition-all">
-                Add Rule
-              </button>
-            </motion.div>
-            )}
+
           </AnimatePresence>
         </div>
 

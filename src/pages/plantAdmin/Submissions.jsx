@@ -9,7 +9,8 @@ import {
   Eye,
   Filter,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  RefreshCw
 } from "lucide-react";
 import { submissionApi } from "../../api/submission.api";
 import { useAuth } from "../../context/AuthContext";
@@ -71,6 +72,29 @@ export default function Submissions() {
     total: 0
   });
 
+  // Recalculate stats from local data as fallback
+  const calculateLocalStats = useMemo(() => {
+    const localStats = {
+      draft: 0,
+      submitted: 0,
+      pending_approval: 0,
+      approved: 0,
+      rejected: 0,
+      total: submissions.length
+    };
+  
+    submissions.forEach(submission => {
+      const status = submission.status?.toLowerCase();
+      if (status === 'draft') localStats.draft++;
+      else if (status === 'submitted') localStats.submitted++;
+      else if (status === 'pending_approval' || status === 'pending-approval') localStats.pending_approval++;
+      else if (status === 'approved') localStats.approved++;
+      else if (status === 'rejected') localStats.rejected++;
+    });
+  
+    return localStats;
+  }, [submissions]);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -84,7 +108,9 @@ export default function Submissions() {
       ]);
       
       setSubmissions(submissionsRes.success ? submissionsRes.data : []);
-      setStats(statsRes.success ? statsRes.data : {});
+      if (statsRes.success) {
+        setStats(statsRes.data);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -168,22 +194,34 @@ export default function Submissions() {
               Manage form submissions for your plant
             </p>
           </div>
+          <button
+            onClick={fetchData}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {[
-          { label: "Total", value: stats.total, color: "bg-blue-500" },
-          { label: "Draft", value: stats.draft, color: "bg-gray-500" },
-          { label: "Pending", value: stats.pending_approval, color: "bg-yellow-500" },
-          { label: "Approved", value: stats.approved, color: "bg-green-500" },
-          { label: "Rejected", value: stats.rejected, color: "bg-red-500" }
+          { label: "Total", value: stats.total || calculateLocalStats.total, color: "bg-blue-500" },
+          { label: "Draft", value: stats.draft || calculateLocalStats.draft, color: "bg-gray-500" },
+          { label: "Pending", value: stats.pending_approval || calculateLocalStats.pending_approval, color: "bg-yellow-500" },
+          { label: "Approved", value: stats.approved || calculateLocalStats.approved, color: "bg-green-500" },
+          { label: "Rejected", value: stats.rejected || calculateLocalStats.rejected, color: "bg-red-500" }
         ].map((stat, index) => (
           <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
             <div className={`w-3 h-3 rounded-full ${stat.color} mb-2`}></div>
             <p className="text-sm text-gray-600">{stat.label}</p>
             <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+            {stat.value === 0 && (
+              <p className="text-xs text-gray-400 mt-1">
+                {stat.label === "Total" ? "No submissions yet" : "None"}
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -225,8 +263,17 @@ export default function Submissions() {
             <FileText className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No submissions found</h3>
             <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || filterStatus !== "all" ? "Try adjusting your search or filter terms" : "Submissions will appear here when employees submit forms"}
+              {searchTerm || filterStatus !== "all" 
+                ? "Try adjusting your search or filter terms" 
+                : "Submissions will appear here when employees submit forms. Encourage your team to start filling out forms!"}
             </p>
+            {stats.total === 0 && calculateLocalStats.total === 0 && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <span className="font-medium">Tip:</span> Create some forms first, then share them with your employees to start collecting submissions.
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-gray-200">

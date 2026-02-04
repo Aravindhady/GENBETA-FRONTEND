@@ -77,13 +77,68 @@ export default function ApprovalDetail() {
           isMyTurn,
           pendingApproverName
         });
-        setFormData(res.data.data || {});
+        // Handle form data with fallbacks for different possible structures
+        const responseData = res.data.data;
+        let formData = {};
+        
+        if (responseData && typeof responseData === 'object') {
+          // Try different possible structures for form data
+          if (responseData.responses) {
+            formData = { ...responseData.responses };
+          } else if (responseData.data) {
+            formData = { ...responseData.data };
+          } else {
+            formData = { ...responseData };
+          }
+        }
+        
+        // Also merge any files data that might contain signatures
+        if (res.data.files && Array.isArray(res.data.files)) {
+          res.data.files.forEach(file => {
+            if (file.fieldId && file.url) {
+              formData[file.fieldId] = file.url; // Map file URLs to field IDs
+            }
+          });
+        }
+        
+        setFormData(formData);
+        
         // Debug: Log the data structure
         console.log('Submission data:', res.data);
-        console.log('Form data:', res.data.data);
+        console.log('Form data:', formData);
+        console.log('Form data keys:', Object.keys(formData || {}));
+        console.log('Files in submission:', res.data.files);
         console.log('Template:', template);
         console.log('Template fields:', template?.fields);
         console.log('Template sections:', template?.sections);
+        
+        // Log signature-related data if present
+        if (formData) {
+          console.log('All form data entries:', formData);
+          Object.keys(formData).forEach(key => {
+            const value = formData[key];
+            console.log(`Field: ${key}, Type: ${typeof value}, Value:`, value);
+            if (typeof value === 'string' && (value.includes('cloudinary') || value.includes('signature') || value.includes('.png') || value.includes('data:image'))) {
+              console.log(`Signature field found - Key: ${key}, Value: ${value}`);
+            }
+          });
+        }
+        
+        // Also log template fields to see what signature fields exist
+        if (template) {
+          const signatureFields = [];
+          if (template.fields) {
+            signatureFields.push(...template.fields.filter(f => f.type === 'signature'));
+          }
+          if (template.sections) {
+            template.sections.forEach(section => {
+              if (section.fields) {
+                signatureFields.push(...section.fields.filter(f => f.type === 'signature'));
+              }
+            });
+          }
+          console.log('Signature fields in template:', signatureFields);
+        }
       } else {
         // Set submission to null if API call was unsuccessful
         setSubmission(null);
@@ -237,9 +292,10 @@ export default function ApprovalDetail() {
               <div className="bg-slate-50/50 rounded-xl border border-slate-100 p-5">
                 <FormRenderer
                   form={template}
-                  initialData={submission.data}
+                  initialData={formData}
                   onDataChange={setFormData}
                   readOnly
+                  key={`form-renderer-${id}`}
                 />
               </div>
             </div>

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import api from "../../api/api";
 import {
   LayoutDashboard,
   Building,
@@ -31,6 +32,22 @@ export default function Sidebar({ isOpen, onToggle }) {
   const location = useLocation();
 
   const [expandedFacility, setExpandedFacility] = useState(false);
+  const [templateFeatureEnabled, setTemplateFeatureEnabled] = useState(null); // null = not loaded yet
+
+  // Compute submenu items based on template feature status
+  const plantSubmenuItems = useMemo(() => {
+    const baseItems = [
+      { title: "Active Forms", path: "/plant/forms/active", icon: FileCheck },
+      { title: "Drafts", path: "/plant/forms/draft", icon: FileEdit },
+      { title: "Archived", path: "/plant/forms/archived", icon: Archive }
+    ];
+    
+    if (templateFeatureEnabled === true) {
+      baseItems.push({ title: "Saved Templates", path: "/plant/forms/templates", icon: Bookmark });
+    }
+    
+    return baseItems;
+  }, [templateFeatureEnabled]);
 
   // Check if any facility submenu is active
   const isFacilitySubmenuActive = [
@@ -39,6 +56,40 @@ export default function Sidebar({ isOpen, onToggle }) {
     "/plant/forms/archived",
     "/plant/forms/templates"
   ].some(path => location.pathname.startsWith(path));
+
+  // Fetch template feature status for plant admin
+  useEffect(() => {
+    if (user?.role === "PLANT_ADMIN" && user?.plantId && templateFeatureEnabled === null) {
+      const fetchTemplateFeatureStatus = async () => {
+        try {
+          const response = await api.get("/api/plants/my-plant");
+          if (response && response.data) {
+            const plant = response.data.plant;
+            const company = response.data.company;
+            
+            // Check if template feature is enabled
+            // If plant has explicit setting, use it; otherwise inherit from company
+            let enabled = false;
+            if (plant.templateFeatureEnabled !== null && plant.templateFeatureEnabled !== undefined) {
+              enabled = plant.templateFeatureEnabled;
+            } else {
+              enabled = company?.templateFeatureEnabled || false;
+            }
+            
+            setTemplateFeatureEnabled(enabled);
+          }
+        } catch (err) {
+          console.error("Error fetching template feature status:", err);
+          setTemplateFeatureEnabled(false); // Default to false if there's an error
+        }
+      };
+      
+      fetchTemplateFeatureStatus();
+    } else if (user?.role !== "PLANT_ADMIN") {
+      // For non-plant admins, we don't show the templates menu anyway
+      setTemplateFeatureEnabled(false);
+    }
+  }, [user, templateFeatureEnabled]);
 
   // Toggle facility submenu
   const toggleFacilityMenu = () => {
@@ -56,12 +107,7 @@ export default function Sidebar({ isOpen, onToggle }) {
             title: "Facility", 
             icon: Layers, 
             path: "/plant/forms", 
-            submenu: [
-              { title: "Active Forms", path: "/plant/forms/active", icon: FileCheck },
-              { title: "Drafts", path: "/plant/forms/draft", icon: FileEdit },
-              { title: "Archived", path: "/plant/forms/archived", icon: Archive },
-              { title: "Saved Templates", path: "/plant/forms/templates", icon: Bookmark }
-            ],
+            submenu: plantSubmenuItems,
             expanded: expandedFacility,
             toggle: toggleFacilityMenu,
             isActive: isFacilitySubmenuActive || location.pathname === "/plant/forms"
@@ -275,7 +321,7 @@ export default function Sidebar({ isOpen, onToggle }) {
 
         {/* Footer Section */}
         <div className="p-3 border-t border-slate-200/60 space-y-1">
-          {user?.role !== "PLANT_ADMIN" && (
+          {user?.role !== "PLANT_ADMIN" && user?.role !== "EMPLOYEE" && (
             <NavLink
               to="/settings"
               title={!isOpen ? "Settings" : ""}

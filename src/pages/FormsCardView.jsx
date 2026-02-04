@@ -64,7 +64,9 @@ export default function FormsCardView() {
       ]);
 
       if (formsRes.success) {
-        setForms(formsRes.data || []);
+        // Filter out draft forms from the forms list
+        const nonDraftForms = (formsRes.data || []).filter(form => form.status && form.status.toUpperCase() !== "DRAFT");
+        setForms(nonDraftForms);
       }
       if (submissionsRes.success) {
         setSubmissions(submissionsRes.data || []);
@@ -106,8 +108,9 @@ export default function FormsCardView() {
   };
 
   const filteredForms = forms.filter(f => 
-    f.formName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    f.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    (f.formName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    f.description?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    f.status && f.status.toUpperCase() !== "DRAFT"
   );
 
   const filteredSubmissions = submissions.filter(s => 
@@ -457,7 +460,7 @@ const getStatusColor = (status) => {
       {viewMode === "table" && !loading && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { label: 'Total Templates', value: forms.length, sub: 'Available forms', icon: FileText },
+            { label: 'Total Templates', value: forms.filter(f => f.status && f.status.toUpperCase() !== "DRAFT").length, sub: 'Available forms', icon: FileText },
             { label: 'Active Submissions', value: submissions.length, sub: 'Across all forms', icon: ClipboardList },
             { label: 'Latest Submission', value: formatDate(Math.max(...submissions.map(s => new Date(s.createdAt)))), sub: 'Most recent activity', icon: Clock },
           ].map((stat, i) => (
