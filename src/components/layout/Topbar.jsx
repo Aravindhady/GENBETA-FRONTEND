@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Menu, User, Building2, ChevronDown } from "lucide-react";
-import logo from "../../assets/Matapang.png";
+import logo from "../../assets/MatapanLogo.png";
 
 export default function Topbar({ onMenuClick }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -50,24 +50,29 @@ export default function Topbar({ onMenuClick }) {
 
           {/* Logo (Desktop) */}
           <div className="hidden lg:flex items-center">
-            <div className="bg-white px-4 py-2 ">
+            <div className="bg-white px-4 py-2 flex items-center">
               <img
                 src={logo}
-                alt="Matapang Logo"
+                alt="Matapan Logo"
                 className="h-12 w-auto object-contain"
               />
+            <span className="text-2xl font-extrabold text-slate-900 ml-2 tracking-wide font-[Satoshi]">
+  Metapang
+</span>
+
             </div>
           </div>
         </div>
 
         {/* Center: Logo (Mobile) */}
         <div className="lg:hidden flex justify-center flex-1">
-          <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center">
             <img
               src={logo}
-              alt="Matapang Logo"
+              alt="Matapan Logo"
               className="h-8 w-auto object-contain"
             />
+            <span className="text-xl font-extrabold text-slate-900 ml-2 font-serif">metapang</span>
           </div>
         </div>
 

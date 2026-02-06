@@ -47,7 +47,8 @@ export default function Assignments() {
   };
 
   const filteredAssignments = assignments.filter(a => {
-    const matchesSearch = a.templateId?.templateName?.toLowerCase().includes(searchTerm.toLowerCase()) || a.employeeId?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const templateName = a.templateId?.templateName || a.templateId?.formName || "";
+    const matchesSearch = templateName.toLowerCase().includes(searchTerm.toLowerCase()) || a.employeeId?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || a.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -87,7 +88,7 @@ export default function Assignments() {
               <tr className="bg-gray-50/50 border-b border-gray-100">
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Template & Employee</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Assigned At</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Due Date</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Date</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Actions</th>
               </tr>
@@ -104,7 +105,7 @@ export default function Assignments() {
               <tr className="bg-gray-50/50 border-b border-gray-100">
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Template & Employee</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Assigned At</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Due Date</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Date</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Actions</th>
               </tr>
@@ -116,13 +117,13 @@ export default function Assignments() {
                     <div className="flex items-center gap-4">
                       <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all"><FileText className="w-5 h-5" /></div>
                       <div>
-                        <p className="font-bold text-gray-900 line-clamp-1">{assignment.templateId?.templateName || "Unknown Template"}</p>
+                        <p className="font-bold text-gray-900 line-clamp-1">{assignment.templateId?.templateName || assignment.templateId?.formName || "Unknown Template"}</p>
                         <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5"><User className="w-3 h-3" /><span>{assignment.employeeId?.name || "Unknown Employee"}</span></div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4"><div className="flex items-center gap-2 text-sm text-gray-600"><Calendar className="w-4 h-4 text-gray-400" />{new Date(assignment.createdAt).toLocaleDateString()}</div></td>
-                  <td className="px-6 py-4"><div className={`flex items-center gap-2 text-sm ${assignment.dueDate && new Date(assignment.dueDate) < new Date() && assignment.status === 'PENDING' ? 'text-red-500 font-bold' : 'text-gray-600'}`}><Calendar className="w-4 h-4" />{assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : "No due date"}</div></td>
+                  <td className="px-6 py-4"><div className="flex items-center gap-2 text-sm text-gray-600"><Calendar className="w-4 h-4 text-gray-400" />{new Date(assignment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div></td>
+                  <td className="px-6 py-4"><div className="flex items-center gap-2 text-sm text-gray-600"><Calendar className="w-4 h-4" />{new Date(assignment.createdAt).toLocaleDateString()}</div></td>
                   <td className="px-6 py-4">{getStatusBadge(assignment.status)}</td>
                   <td className="px-6 py-4 text-right"><button onClick={() => handleDelete(assignment._id)} className="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600 transition-all" title="Remove Assignment"><Trash2 className="w-4 h-4" /></button></td>
                 </tr>

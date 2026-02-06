@@ -27,12 +27,17 @@ export const assignmentApi = {
 
   assignTemplate: async (assignmentData) => {
     try {
+      console.log("Sending assignment data to backend:", assignmentData);
       const response = await api.post("/api/assignments/assign", assignmentData);
+      console.log("Received response from backend:", response.data);
       return response.data;
     } catch (error) {
+      console.error("Assignment API error:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred";
+      console.error("Error message:", errorMessage);
       return {
         success: false,
-        message: error.response?.data?.message || error.message,
+        message: errorMessage,
       };
     }
   },
@@ -136,6 +141,21 @@ export const assignmentApi = {
   },
 
   createTasks: async (data) => {
+    // Validate input data
+    if (!data.formIds || !Array.isArray(data.formIds) || data.formIds.length === 0) {
+      return { success: false, message: "No forms selected for assignment" };
+    }
+    
+    if (!data.assignedTo) {
+      return { success: false, message: "No employee selected for assignment" };
+    }
+    
+    console.log("Assignment API called with:", {
+      templateIds: data.formIds,
+      employeeIds: [data.assignedTo],
+      dueDate: data.dueDate
+    });
+    
     return assignmentApi.assignTemplate({
       templateIds: data.formIds, // Sending array of IDs
       employeeIds: [data.assignedTo],

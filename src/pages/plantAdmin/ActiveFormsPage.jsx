@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, FileText, Trash2, Edit, Check, Users, Copy, Archive, RefreshCw, Download, Loader2, Table, Factory } from "lucide-react";
+import { Plus, Search, FileText, Trash2, Edit, Check, Users, Copy, Archive, RefreshCw, Download, Loader2, Table, Factory, UserPlus } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { formApi } from "../../api/form.api";
@@ -273,13 +273,38 @@ export default function ActiveFormsPage() {
       ]);
       
       if (formsRes.success) {
-        setForms(formsRes.data);
+        // Check for any malformed data that might cause "allshow" string
+        const cleanedForms = formsRes.data.map(form => {
+          if (form.formName && form.formName.includes("allshow")) {
+            console.warn("Found malformed form name:", form.formName);
+            return { ...form, formName: form.formName.replace("allshow", "[ERROR]") };
+          }
+          return form;
+        });
+        setForms(cleanedForms);
       } else {
-        setForms(formsRes || []);
+        const formsData = formsRes || [];
+        // Check for malformed data in fallback case
+        const cleanedForms = formsData.map(form => {
+          if (form.formName && form.formName.includes("allshow")) {
+            console.warn("Found malformed form name in fallback:", form.formName);
+            return { ...form, formName: form.formName.replace("allshow", "[ERROR]") };
+          }
+          return form;
+        });
+        setForms(cleanedForms);
       }
 
       if (templatesRes.success) {
-        setTemplates(templatesRes.data);
+        // Check for any malformed data that might cause "allshow" string
+        const cleanedTemplates = templatesRes.data.map(template => {
+          if (template.templateName && template.templateName.includes("allshow")) {
+            console.warn("Found malformed template name:", template.templateName);
+            return { ...template, templateName: template.templateName.replace("allshow", "[ERROR]") };
+          }
+          return template;
+        });
+        setTemplates(cleanedTemplates);
       }
     } catch (err) {
       logError("Fetch forms data", err);
@@ -297,18 +322,38 @@ export default function ActiveFormsPage() {
   };
 
   const onConfirmApproval = async (approverId) => {
+    // Validate input data
+    if (!selectedForms || selectedForms.length === 0) {
+      toast.error("Please select at least one form to assign");
+      return;
+    }
+    
+    if (!approverId) {
+      toast.error("Please select an employee to assign forms to");
+      return;
+    }
+    
     try {
+      console.log("Sending assignment data:", { formIds: selectedForms, assignedTo: approverId });
+      
       const response = await assignmentApi.createTasks({
         formIds: selectedForms,
         assignedTo: approverId
       });
 
       if (response.success) {
-        toast.success(`Form(s) assigned successfully to the employee!`);
+        const successMessage = response.message || `Form(s) assigned successfully to the employee!`;
+        toast.success(successMessage);
         setSelectedForms([]);
         setIsApproverModalOpen(false);
       } else {
-        toast.error(response.message || "Failed to assign forms");
+        const errorMessage = response.message || "Failed to assign forms";
+        // Check for "allshow" string and provide better error message
+        if (errorMessage.includes("allshow")) {
+          toast.error("Failed to assign forms. Please check your selection and try again.");
+        } else {
+          toast.error(errorMessage);
+        }
       }
     } catch (err) {
       logError("Assign forms", err);
@@ -577,6 +622,27 @@ export default function ActiveFormsPage() {
                         </td>
                           <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-2">
+                              {/* Assign button for non-archived templates */}
+                              {!isArchived && (
+                                <button
+                                  onClick={() => {
+                                    toggleFormSelection(item._id);
+                                    if (!selectedForms.includes(item._id)) {
+                                      // If this is the first selection, show assign modal
+                                      setTimeout(() => {
+                                        if (selectedForms.length > 0 || [item._id].length > 0) {
+                                          handleSendMultiFormLink();
+                                        }
+                                      }, 100);
+                                    }
+                                  }}
+                                  className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                  title="Assign Form"
+                                >
+                                  <UserPlus className="w-4 h-4" />
+                                </button>
+                              )}
+                              
                               {/* Regular form actions */}
                               {!isArchived ? (
                                 <>

@@ -88,6 +88,16 @@ export const analyticsApi = {
       
       const response = await api.get("/api/analytics/approvers-workload", { params });
       return response.data;
+    },
+    
+    // Get super admin analytics
+    getSuperAdminAnalytics: async (days = 30, plantId = null, companyId = null) => {
+      const params = { days };
+      if (plantId) params.plantId = plantId;
+      if (companyId) params.companyId = companyId;
+      
+      const response = await api.get("/api/analytics/super-admin", { params });
+      return response.data;
     }
   };
 

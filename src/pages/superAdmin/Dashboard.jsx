@@ -49,6 +49,7 @@ export default function SuperAdminDashboard() {
       setPlants(plantsRes.data.data || plantsRes.data);
     } catch (err) {
       console.error("Failed to fetch initial data", err);
+      console.error("Companies API error:", err.response || err.message || err);
     } finally {
       setLoading(false);
     }
@@ -56,16 +57,18 @@ export default function SuperAdminDashboard() {
 
   const fetchAnalytics = async () => {
     setAnalyticsLoading(true);
+    const params = {
+      days: selectedRange,
+      companyId: selectedCompany || undefined,
+      plantId: selectedPlant || undefined
+    };
     try {
-      const params = {
-        days: selectedRange,
-        companyId: selectedCompany || undefined,
-        plantId: selectedPlant || undefined
-      };
       const response = await api.get("/api/analytics/super-admin", { params });
       setAnalytics(response.data.data);
     } catch (err) {
       console.error("Failed to fetch super admin analytics", err);
+      console.error("Error details:", err.response || err.message || err);
+      console.error("Request params:", params);
     } finally {
       setAnalyticsLoading(false);
     }
@@ -114,13 +117,18 @@ export default function SuperAdminDashboard() {
     { title: "Successful Permits", value: kpis.totalApproved || 0, icon: <CheckCircle2 className="w-7 h-7" />, color: "green" },
     { title: "Blocked Permits", value: kpis.totalRejected || 0, icon: <XCircle className="w-7 h-7" />, color: "red" },
     { title: "Live Operators", value: kpis.activeUsersToday || 0, icon: <Users className="w-7 h-7" />, color: "amber" },
-    { title: "Avg Cycle Time", value: `${analytics?.averageApprovalTime || 0}d`, icon: <Clock className="w-7 h-7" />, color: "orange" },
+    { title: "Avg Cycle Time", value: `${kpis.averageApprovalTime || 0}d`, icon: <Clock className="w-7 h-7" />, color: "orange" },
   ];
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        {loading && (
+          <div className="text-center py-4">
+            <p>Loading dashboard...</p>
+          </div>
+        )}
         
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative z-10">
           <div>
@@ -174,7 +182,7 @@ export default function SuperAdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {analyticsLoading || loading ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />) : statCardsData.map((card, i) => (
+        {(analyticsLoading || loading) ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />) : statCardsData.map((card, i) => (
           <StatCard key={i} {...card} />
         ))}
       </div>

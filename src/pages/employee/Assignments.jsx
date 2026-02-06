@@ -86,7 +86,7 @@ export default function EmployeeAssignments() {
                   <th className="px-6 py-4 text-left">
                     <span className="text-xs font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
                       <Calendar size={12} />
-                      Due Date
+                      Date
                     </span>
                   </th>
                   <th className="px-6 py-4 text-center">
@@ -117,6 +117,14 @@ export default function EmployeeAssignments() {
                         <div className="flex items-center gap-1.5 text-xs text-slate-600">
                           <Calendar size={12} className="text-slate-400" />
                           <span className="font-semibold">
+                            {new Date(assignment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                          <Calendar size={12} />
+                          <span className="font-semibold">
                             {new Date(assignment.createdAt).toLocaleDateString('en-US', { 
                               month: 'short', 
                               day: 'numeric', 
@@ -124,29 +132,6 @@ export default function EmployeeAssignments() {
                             })}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {assignment.dueDate ? (
-                          <div className={`flex items-center gap-1.5 text-xs font-bold ${
-                            isOverdue ? 'text-red-600' : 'text-amber-600'
-                          }`}>
-                            <Calendar size={12} />
-                            <span>
-                              {new Date(assignment.dueDate).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric', 
-                                year: 'numeric' 
-                              })}
-                            </span>
-                            {isOverdue && (
-                              <span className="ml-1 px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-black uppercase">
-                                Overdue
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400 font-semibold">—</span>
-                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center">
